@@ -3,44 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pro Pacer 4s</title>
+    <title>Pro Pacer Tight</title>
     <style>
         body {
             background-color: #000000;
             color: #ffffff;
             font-family: 'Courier New', Courier, monospace;
             display: flex;
-            flex-direction: column; QA
+            flex-direction: column;
             align-items: center;
             height: 100vh;
             margin: 0;
             overflow: hidden;
             touch-action: manipulation;
-            transition: background-color 0.3s ease; /* Smooth color transition */
+            transition: background-color 0.3s ease;
         }
 
-        /* --- TOP STATUS BAR (Running Timers - SMALL) --- */
+        /* --- TOP STATUS BAR --- */
         #status-bar {
             display: flex;
             justify-content: space-between;
             width: 90%;
             margin-top: 15px;
-            color: #aaa;
+            color: #555; /* Dim when stopped */
             font-weight: bold;
             font-size: 1.2rem;
+            transition: color 0.3s;
         }
-        #skin-timer-running { color: #00ffcc; }
+        /* New class to make top bar bright when running */
+        .status-active {
+            color: #fff !important;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+        }
+        #skin-timer-running { color: inherit; }
 
 
         /* --- MAIN HUGE DISPLAY (Last Lap Result) --- */
         #last-lap-big {
-            flex-grow: 1; /* Take up available space */
+            flex-grow: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 30vh; /* HUGE */
+            font-size: 30vh; 
             font-weight: bold;
-            text-shadow: 2px 2px 10px rgba(0,0,0,0.5);
+            /* TIGHTER SPACING HERE */
+            letter-spacing: -0.12em; 
+            /* -------------------- */
+            text-shadow: 4px 4px 0px #000; /* Solid shadow for contrast */
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Pulsing animation for "GO!" text */
+        .pulsing-text {
+            animation: pulse 1s infinite;
+            font-size: 15vh !important; /* Smaller text for words like READY/GO */
+            letter-spacing: 0 !important;
+            color: #00ffcc;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
 
         /* --- TARGET INPUT AREA --- */
@@ -49,9 +74,10 @@
             align-items: center;
             gap: 10px;
             margin-bottom: 10px;
-            background: rgba(0,0,0,0.5); /* Semi-transparent bg for readability */
+            background: rgba(0,0,0,0.5);
             padding: 5px 15px;
             border-radius: 10px;
+            z-index: 20;
         }
         label { font-size: 1.2rem; color: #ddd; text-transform: uppercase;}
         #target-input {
@@ -65,9 +91,9 @@
             font-family: 'Courier New', Courier, monospace;
         }
 
-        /* --- LAP HISTORY LIST (Smaller now) --- */
+        /* --- LAP HISTORY LIST --- */
         #laps-container {
-            height: 15vh; /* Fixed height scrollable area */
+            height: 15vh;
             width: 90%;
             overflow-y: auto;
             text-align: center;
@@ -75,6 +101,7 @@
             border-top: 1px solid #555;
             margin-bottom: 5px;
             background: rgba(0,0,0,0.3);
+            z-index: 20;
         }
         .lap-row {
             padding: 4px 8px;
@@ -82,7 +109,6 @@
             display: flex;
             justify-content: space-between;
         }
-        /* Colors for list items need to contrast well against red/green bg */
         .lap-good { color: #ffffff; font-weight: bold; } 
         .lap-bad { color: #000000; font-weight: bold; }
 
@@ -91,6 +117,7 @@
             display: flex;
             width: 100%;
             height: 20vh;
+            z-index: 20;
         }
         button {
             border: none;
@@ -111,6 +138,7 @@
             font-size: 0.8rem;
             border-radius: 5px;
             color: white;
+            z-index: 30;
         }
 
     </style>
@@ -124,7 +152,7 @@
         <div>Run: <span id="skin-timer-running">0.0</span></div>
     </div>
 
-    <div id="last-lap-big">READY</div>
+    <div id="last-lap-big" class="pulsing-text">READY</div>
 
     <div class="target-container">
         <label>Target:</label>
@@ -145,9 +173,10 @@
         let elapsedTime = 0;
         let timerInterval;
         let running = false;
-        let flashTimeout; // Variable to hold the 4s timer handle
+        let flashTimeout; 
         
         // Element References
+        const statusBar = document.getElementById("status-bar");
         const fullDisplay = document.getElementById("full-timer");
         const skinRunningDisplay = document.getElementById("skin-timer-running");
         const lastLapBigDisplay = document.getElementById("last-lap-big");
@@ -155,7 +184,6 @@
         const lapsList = document.getElementById("laps-list");
         const targetInput = document.getElementById("target-input");
 
-        // Helper: Format ms to 00:00.0
         function formatFullTime(ms) {
             let date = new Date(ms);
             let m = date.getUTCMinutes().toString().padStart(2, '0');
@@ -164,7 +192,6 @@
             return `${m}:${s}.${t}`;
         }
 
-        // Main Loop: Updates running timers
         function updateDisplay() {
             const now = Date.now();
             const totalMs = elapsedTime + (running ? (now - startTime) : 0);
@@ -179,26 +206,38 @@
             skinRunningDisplay.innerText = secondsDigit + "." + tenthsDigit;
         }
 
-        // Main Button Action
         function lapOrStart() {
             if (!running) {
                 // START ACTION
                 running = true;
                 startTime = Date.now();
                 timerInterval = setInterval(updateDisplay, 30);
+                
+                // Visual Updates for Start
                 lapBtn.innerText = "LAP";
-                lapBtn.style.backgroundColor = "#0044cc"; // Blue
+                lapBtn.style.backgroundColor = "#0044cc"; 
                 targetInput.disabled = true;
-                // Reset background if starting fresh
-                if(elapsedTime === 0) document.body.style.backgroundColor = "#000000"; 
+                
+                // Make top bar bright
+                statusBar.classList.add("status-active");
+
+                // Clear background if starting fresh
+                if(elapsedTime === 0) {
+                    document.body.style.backgroundColor = "#000000"; 
+                    // Set big display to GO!
+                    lastLapBigDisplay.innerText = "GO!";
+                    lastLapBigDisplay.classList.add("pulsing-text");
+                }
             } else {
                 // LAP ACTION
                 handleLap();
             }
         }
 
-        // Lap Logic
         function handleLap() {
+            // Remove pulsing text class (so numbers are huge and tight)
+            lastLapBigDisplay.classList.remove("pulsing-text");
+
             // Get current values
             let currentSkinValStr = skinRunningDisplay.innerText;
             let currentSkinValNum = parseFloat(currentSkinValStr);
@@ -208,23 +247,17 @@
             lastLapBigDisplay.innerText = currentSkinValStr;
 
             // Determine Success (Green) or Fail (Red)
-            // Logic: If Skin Time is LESS or EQUAL to Target = Green
             let isGood = currentSkinValNum <= targetVal;
 
-            // --- THE 4-SECOND COLOR HOLD ---
-            // 1. Clear any existing timeout so it doesn't turn black early if you tap fast
+            // --- 4-SECOND COLOR HOLD ---
             if (flashTimeout) clearTimeout(flashTimeout);
 
-            // 2. Set the background color immediately
-            // Using distinct colors that contrast with white/black text
             document.body.style.backgroundColor = isGood ? "#00aa55" : "#dd2222";
 
-            // 3. Set a new timeout to reset to black after 4 seconds (4000ms)
             flashTimeout = setTimeout(() => {
                  document.body.style.backgroundColor = "#000000";
             }, 4000);
-            // -------------------------------
-
+            // ---------------------------
 
             // Add to history list
             let row = document.createElement("div");
@@ -239,22 +272,31 @@
                 running = false;
                 clearInterval(timerInterval);
                 elapsedTime += Date.now() - startTime;
+                
                 lapBtn.innerText = "RESUME";
-                lapBtn.style.backgroundColor = "#00aa55"; // Greenish for resume
+                lapBtn.style.backgroundColor = "#00aa55";
                 targetInput.disabled = false;
+                
+                // Dim the top bar
+                statusBar.classList.remove("status-active");
+                // Stop "GO" pulsing if they stopped before first lap
+                lastLapBigDisplay.classList.remove("pulsing-text");
             }
         }
 
         function resetAll() {
-            stopTimer(); // Ensure stopped
-            // Clear any pending color resets
+            stopTimer();
             if (flashTimeout) clearTimeout(flashTimeout);
             document.body.style.backgroundColor = "#000000";
             
             elapsedTime = 0;
             fullDisplay.innerText = "00:00.0";
             skinRunningDisplay.innerText = "0.0";
+            
+            // Reset Big Display
             lastLapBigDisplay.innerText = "READY";
+            lastLapBigDisplay.classList.add("pulsing-text"); // Use pulsing style for READY text
+            
             lapsList.innerHTML = "";
             lapBtn.innerText = "START";
             lapBtn.style.backgroundColor = "#0044cc";
