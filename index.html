@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pro Schedule Timer</title>
+    <style>
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        /* 1. SMALL COMPLETE TIMER */
+        #full-timer {
+            font-size: 5vw;
+            color: #888;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        /* 2. MAIN 10s LOOP DISPLAY */
+        #skin-timer {
+            font-size: 35vh;
+            font-weight: bold;
+            line-height: 1;
+            margin: 10px 0;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        /* TARGET INPUT AREA */
+        .target-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        label { font-size: 1.2rem; color: #aaa; text-transform: uppercase;}
+        #target-input {
+            background: #222;
+            border: 1px solid #444;
+            color: #00ffcc;
+            font-size: 2rem;
+            width: 80px;
+            text-align: center;
+            border-radius: 5px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        /* LAP HISTORY */
+        #laps {
+            flex-grow: 1;
+            width: 90%;
+            overflow-y: auto;
+            text-align: center;
+            font-size: 1.2rem;
+            border-top: 1px solid #333;
+            margin-bottom: 10px;
+        }
+        .lap-row {
+            padding: 8px;
+            border-bottom: 1px solid #222;
+            display: flex;
+            justify-content: space-between;
+        }
+        .lap-good { color: #00ff66; }
+        .lap-bad { color: #ff3333; }
+
+        /* BUTTONS */
+        .controls {
+            display: flex;
+            width: 100%;
+            height: 25vh;
+        }
+        button {
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        #btn-stop {
+            width: 30%;
+            background-color: #cc0000; /* Red */
+        }
+        #btn-lap {
+            width: 70%;
+            background-color: #0044cc; /* Blue */
+            font-size: 3rem; /* Bigger text for main button */
+        }
+        #btn-reset {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: transparent;
+            border: 1px solid #555;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            border-radius: 5px;
+        }
+
+        /* ANIMATIONS */
+        .flash-green { animation: flashGreen 0.5s ease-out; }
+        .flash-red { animation: flashRed 0.5s ease-out; }
+
+        @keyframes flashGreen {
+            0% { background-color: #00cc66; }
+            100% { background-color: #000000; }
+        }
+        @keyframes flashRed {
+            0% { background-color: #cc0000; }
+            100% { background-color: #000000; }
+        }
+    </style>
+</head>
+<body>
+
+    <button id="btn-reset" onclick="resetAll()">RESET</button>
+
+    <div id="full-timer">00:00.0</div>
+
+    <div id="skin-timer">0.0</div>
+
+    <div class="target-container">
+        <label>Target:</label>
+        <input type="number" id="target-input" value="5.0" step="0.1">
+    </div>
+
+    <div id="laps"></div>
+
+    <div class="controls">
+        <button id="btn-stop" onclick="stopTimer()">Stop</button>
+        <button id="btn-lap" onclick="lapOrStart()">START</button>
+    </div>
+
+    <script>
+        let startTime = 0;
+        let elapsedTime = 0;
+        let timerInterval;
+        let running = false;
+        
+        const fullDisplay = document.getElementById("full-timer");
+        const skinDisplay = document.getElementById("skin-timer");
+        const lapBtn = document.getElementById("btn-lap");
+        const lapsList = document.getElementById("laps");
+        const targetInput = document.getElementById("target-input");
+
+        function formatFullTime(ms) {
+            let date = new Date(ms);
+            let m = date.getUTCMinutes().toString().padStart(2, '0');
+            let s = date.getUTCSeconds().toString().padStart(2, '0');
+            let t = Math.floor(date.getUTCMilliseconds() / 100);
+            return `${m}:${s}.${t}`;
+        }
+
+        function updateDisplay() {
+            const now = Date.now();
+            const totalMs = elapsedTime + (running ? (now - startTime) : 0);
+            
+            // 1. Update Small Full Timer
+            fullDisplay.innerText = formatFullTime(totalMs);
+
+            // 2. Update Big Skin Timer
+            let totalSeconds = Math.floor(totalMs / 1000);
+            let secondsDigit = totalSeconds % 10;
+            let tenthsDigit = Math.floor((totalMs % 1000) / 100);
+            skinDisplay.innerText = secondsDigit + "." + tenthsDigit;
+        }
+
+        function lapOrStart() {
+            if (!running) {
+                // START ACTION
+                running = true;
+                startTime = Date.now();
+                timerInterval = setInterval(updateDisplay, 30);
+                lapBtn.innerText = "LAP";
+                lapBtn.style.backgroundColor = "#0044cc"; // Blue
+                // Disable input while running to prevent confusion
+                targetInput.disabled = true; 
+            } else {
+                // LAP ACTION
+                handleLap();
+            }
+        }
+
+        function handleLap() {
+            // Get current values
+            let currentSkinVal = parseFloat(skinDisplay.innerText);
+            let targetVal = parseFloat(targetInput.value);
+
+            // Determine Success (Green) or Fail (Red)
+            // Logic: If Skin Time is LESS or EQUAL to Target = Green
+            let isGood = currentSkinVal <= targetVal;
+
+            // Flash Screen
+            document.body.className = ""; // reset class
+            void document.body.offsetWidth; // trigger reflow
+            document.body.classList.add(isGood ? "flash-green" : "flash-red");
+
+            // Add to Lap List
+            let row = document.createElement("div");
+            row.className = "lap-row " + (isGood ? "lap-good" : "lap-bad");
+            
+            let lapNum = lapsList.children.length + 1;
+            row.innerHTML = `<span>#${lapNum}</span> <span>${skinDisplay.innerText}</span> <span>${isGood ? "(-)" : "(+)"}</span>`;
+            
+            lapsList.prepend(row);
+        }
+
+        function stopTimer() {
+            if (running) {
+                running = false;
+                clearInterval(timerInterval);
+                elapsedTime += Date.now() - startTime;
+                lapBtn.innerText = "RESUME";
+                lapBtn.style.backgroundColor = "#00aa55"; // Greenish for resume
+                targetInput.disabled = false;
+            }
+        }
+
+        function resetAll() {
+            stopTimer(); // Ensure stopped
+            elapsedTime = 0;
+            fullDisplay.innerText = "00:00.0";
+            skinDisplay.innerText = "0.0";
+            lapsList.innerHTML = "";
+            lapBtn.innerText = "START";
+            lapBtn.style.backgroundColor = "#0044cc";
+            document.body.className = "";
+            targetInput.disabled = false;
+        }
+    </script>
+</body>
+</html>
