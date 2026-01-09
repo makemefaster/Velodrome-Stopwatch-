@@ -2,17 +2,33 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Pro Pacer</title>
     <style>
+        * {
+            box-sizing: border-box;
+            /* DISABLES SELECTING TEXT (App feel) */
+            -webkit-user-select: none;
+            user-select: none;
+            /* REMOVES GREY TAP HIGHLIGHT ON IPHONE */
+            -webkit-tap-highlight-color: transparent;
+        }
+
         body {
             background-color: #000000;
             color: #ffffff;
-            font-family: 'Courier New', Courier, monospace;
+            font-family: -apple-system, BlinkMacSystemFont, 'Courier New', Courier, monospace;
             display: flex;
             flex-direction: column;
             align-items: center;
-            height: 100vh;
+            /* LOCKS THE APP TO THE SCREEN (No scrolling) */
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             margin: 0;
             overflow: hidden;
             touch-action: manipulation;
@@ -24,7 +40,8 @@
             display: flex;
             justify-content: space-between;
             width: 90%;
-            margin-top: 15px;
+            margin-top: max(15px, env(safe-area-inset-top)); /* Respects iPhone Notch */
+            padding-top: 10px;
             color: #555;
             font-weight: bold;
             font-size: 1.2rem;
@@ -42,17 +59,19 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 30vh; 
+            font-size: 25vh; /* Slightly adjusted for mobile safety */
             font-weight: bold;
             letter-spacing: -0.12em; 
             text-shadow: 4px 4px 0px #000;
             position: relative;
             z-index: 10;
+            width: 100%;
+            text-align: center;
         }
 
         .pulsing-text {
             animation: pulse 1s infinite;
-            font-size: 15vh !important;
+            font-size: 12vh !important;
             letter-spacing: 0 !important;
             color: #00ffcc;
         }
@@ -70,274 +89,22 @@
             gap: 10px;
             margin-bottom: 10px;
             background: rgba(0,0,0,0.5);
-            padding: 5px 15px;
-            border-radius: 10px;
+            padding: 8px 20px;
+            border-radius: 12px;
             z-index: 20;
         }
         label { font-size: 1.2rem; color: #ddd; text-transform: uppercase;}
+        
+        /* Input needs user-select turned back on so you can type */
         #target-input {
+            -webkit-user-select: text; 
+            user-select: text;
             background: #222;
             border: 1px solid #555;
             color: #00ffcc;
             font-size: 2rem;
             width: 90px;
             text-align: center;
-            border-radius: 5px;
-            font-family: 'Courier New', Courier, monospace;
-        }
-
-        /* --- LAP HISTORY LIST --- */
-        #laps-container {
-            height: 15vh;
-            width: 90%;
-            overflow-y: auto;
-            text-align: center;
-            font-size: 1rem;
-            border-top: 1px solid #555;
-            margin-bottom: 5px;
-            background: rgba(0,0,0,0.3);
-            z-index: 20;
-        }
-        .lap-row {
-            padding: 4px 8px;
-            border-bottom: 1px solid #333;
-            display: flex;
-            justify-content: space-between;
-        }
-        .lap-good { color: #ffffff; font-weight: bold; } 
-        .lap-bad { color: #000000; font-weight: bold; }
-
-        /* --- BUTTONS --- */
-        .controls {
-            display: flex;
-            width: 100%;
-            height: 20vh;
-            z-index: 20;
-        }
-        button {
-            border: none;
-            color: white;
-            font-size: 1.5rem;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        #btn-stop { width: 30%; background-color: #cc0000; border-right: 2px solid black;}
-        #btn-lap { width: 70%; background-color: #0044cc; font-size: 3rem; }
-
-        /* TOP RIGHT MENU (Reset + Share) */
-        .top-menu {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            display: flex;
-            gap: 10px;
-            z-index: 30;
-        }
-        .small-btn {
-            background: rgba(50,50,50,0.8);
-            border: 1px solid #777;
-            padding: 8px 12px;
-            font-size: 0.8rem;
-            border-radius: 5px;
-            color: white;
-            cursor: pointer;
-            text-decoration: none; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        #btn-whatsapp {
-            background-color: #25D366; 
-            border-color: #128C7E;
-            font-weight: bold;
-        }
-
-        /* FOOTER CREDIT */
-        .footer-credit {
-            font-size: 0.6rem;
-            color: #444;
-            margin-bottom: 5px;
-            z-index: 10;
-        }
-
-    </style>
-</head>
-<body>
-
-    <div class="top-menu">
-        <button id="btn-whatsapp" class="small-btn" onclick="shareToWhatsapp()">Share 💬</button>
-        <button id="btn-reset" class="small-btn" onclick="resetAll()">RESET</button>
-    </div>
-
-    <div id="status-bar">
-        <div id="full-timer">00:00.0</div>
-        <div>Run: <span id="skin-timer-running">0.0</span></div>
-    </div>
-
-    <div id="last-lap-big" class="pulsing-text">READY</div>
-
-    <div class="target-container">
-        <label>Target:</label>
-        <input type="number" id="target-input" value="5.0" step="0.1">
-    </div>
-
-    <div id="laps-container">
-        <div id="laps-list"></div>
-    </div>
-
-    <div class="footer-credit">Built by Michael@makemefaster.com</div>
-
-    <div class="controls">
-        <button id="btn-stop" onclick="stopTimer()">Stop</button>
-        <button id="btn-lap" onclick="lapOrStart()">START</button>
-    </div>
-
-    <script>
-        let startTime = 0;
-        let elapsedTime = 0;
-        let timerInterval;
-        let running = false;
-        let flashTimeout; 
-        
-        // Data storage for sharing
-        let sessionData = [];
-
-        // Element References
-        const statusBar = document.getElementById("status-bar");
-        const fullDisplay = document.getElementById("full-timer");
-        const skinRunningDisplay = document.getElementById("skin-timer-running");
-        const lastLapBigDisplay = document.getElementById("last-lap-big");
-        const lapBtn = document.getElementById("btn-lap");
-        const lapsList = document.getElementById("laps-list");
-        const targetInput = document.getElementById("target-input");
-
-        function formatFullTime(ms) {
-            let date = new Date(ms);
-            let m = date.getUTCMinutes().toString().padStart(2, '0');
-            let s = date.getUTCSeconds().toString().padStart(2, '0');
-            let t = Math.floor(date.getUTCMilliseconds() / 100);
-            return `${m}:${s}.${t}`;
-        }
-
-        function updateDisplay() {
-            const now = Date.now();
-            const totalMs = elapsedTime + (running ? (now - startTime) : 0);
-            fullDisplay.innerText = formatFullTime(totalMs);
+            border-radius: 8px;
+            font
             
-            let totalSeconds = Math.floor(totalMs / 1000);
-            let secondsDigit = totalSeconds % 10;
-            let tenthsDigit = Math.floor((totalMs % 1000) / 100);
-            skinRunningDisplay.innerText = secondsDigit + "." + tenthsDigit;
-        }
-
-        function lapOrStart() {
-            if (!running) {
-                running = true;
-                startTime = Date.now();
-                timerInterval = setInterval(updateDisplay, 30);
-                lapBtn.innerText = "LAP";
-                lapBtn.style.backgroundColor = "#0044cc"; 
-                targetInput.disabled = true;
-                statusBar.classList.add("status-active");
-
-                if(elapsedTime === 0) {
-                    document.body.style.backgroundColor = "#000000"; 
-                    lastLapBigDisplay.innerText = "GO!";
-                    lastLapBigDisplay.classList.add("pulsing-text");
-                    sessionData = []; // Clear old data
-                }
-            } else {
-                handleLap();
-            }
-        }
-
-        function handleLap() {
-            lastLapBigDisplay.classList.remove("pulsing-text");
-            let currentSkinValStr = skinRunningDisplay.innerText;
-            let currentSkinValNum = parseFloat(currentSkinValStr);
-            let targetVal = parseFloat(targetInput.value);
-
-            lastLapBigDisplay.innerText = currentSkinValStr;
-
-            let isGood = currentSkinValNum <= targetVal;
-
-            // Save data for WhatsApp
-            let lapNum = sessionData.length + 1;
-            sessionData.push({
-                num: lapNum,
-                time: currentSkinValStr,
-                status: isGood ? "✅" : "❌"
-            });
-
-            // Color Logic
-            if (flashTimeout) clearTimeout(flashTimeout);
-            document.body.style.backgroundColor = isGood ? "#00aa55" : "#dd2222";
-            flashTimeout = setTimeout(() => {
-                 document.body.style.backgroundColor = "#000000";
-            }, 4000);
-
-            // Add to UI List
-            let row = document.createElement("div");
-            row.className = "lap-row " + (isGood ? "lap-good" : "lap-bad");
-            row.innerHTML = `<span>#${lapNum}</span> <span>${currentSkinValStr}</span>`;
-            lapsList.prepend(row);
-        }
-
-        function stopTimer() {
-            if (running) {
-                running = false;
-                clearInterval(timerInterval);
-                elapsedTime += Date.now() - startTime;
-                lapBtn.innerText = "RESUME";
-                lapBtn.style.backgroundColor = "#00aa55";
-                targetInput.disabled = false;
-                statusBar.classList.remove("status-active");
-                lastLapBigDisplay.classList.remove("pulsing-text");
-            }
-        }
-
-        function resetAll() {
-            stopTimer();
-            if (flashTimeout) clearTimeout(flashTimeout);
-            document.body.style.backgroundColor = "#000000";
-            elapsedTime = 0;
-            fullDisplay.innerText = "00:00.0";
-            skinRunningDisplay.innerText = "0.0";
-            lastLapBigDisplay.innerText = "READY";
-            lastLapBigDisplay.classList.add("pulsing-text");
-            lapsList.innerHTML = "";
-            lapBtn.innerText = "START";
-            lapBtn.style.backgroundColor = "#0044cc";
-            targetInput.disabled = false;
-            sessionData = [];
-        }
-
-        function shareToWhatsapp() {
-            if (sessionData.length === 0) {
-                alert("No laps to share yet!");
-                return;
-            }
-
-            // Build the message string
-            let msg = "*⏱️ Pacer Session Report*\n";
-            msg += "🎯 Target: " + targetInput.value + "s\n";
-            msg += "------------------\n";
-            
-            // Loop through data
-            sessionData.forEach(lap => {
-                msg += "Lap " + lap.num + ": " + lap.time + " " + lap.status + "\n";
-            });
-
-            msg += "------------------\n";
-            msg += "Total Time: " + fullDisplay.innerText + "\n\n";
-            msg += "🚀 Built by Michael@makemefaster.com";
-
-            // Encode for URL
-            let encodedMsg = encodeURIComponent(msg);
-            
-            // Open WhatsApp
-            window.open("https://wa.me/?text=" + encodedMsg, "_blank");
-        }
-    </script>
-</body>
-</html>
