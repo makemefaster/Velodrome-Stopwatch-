@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pro Pacer QR+Copy</title>
+    <title>Pro Pacer Final</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         * {
@@ -219,15 +219,16 @@
             background: #0044cc;
             color: white;
             border: 2px solid white;
-            padding: 10px 20px;
+            padding: 15px 30px;
             border-radius: 10px;
             font-size: 1.2rem;
             cursor: pointer;
+            margin-bottom: 20px;
         }
         #close-text {
             color: #aaa;
-            margin-top: 20px;
-            font-size: 0.9rem;
+            font-size: 1rem;
+            text-decoration: underline;
         }
 
     </style>
@@ -237,7 +238,7 @@
     <div id="qr-modal">
         <canvas id="qr-code"></canvas>
         <button id="btn-copy" onclick="copyToClipboard()">📋 Copy Text</button>
-        <div id="close-text" onclick="closeQR()">Tap here to close</div>
+        <div id="close-text" onclick="closeQR()">Close X</div>
     </div>
 
     <div class="top-nav">
@@ -416,9 +417,8 @@
             sessionData = [];
         }
 
-        // --- NEW OPTIMIZED GENERATORS ---
+        // --- GENERATORS ---
 
-        // 1. WhatsApp version (Rich text, Emojis, Footer)
         function buildWhatsAppText() {
             if (sessionData.length === 0) return "No data";
             let msg = "*⏱️ Pacer Session*\nTarget: " + targetInput.value + "s\n------------------\n";
@@ -429,16 +429,14 @@
             return msg;
         }
 
-        // 2. QR Code version (Simplified, No emojis, No footer to save space)
+        // MINIMALIST GENERATOR FOR QR
         function buildQRText() {
             if (sessionData.length === 0) return "No data";
-            let msg = "PACER REPORT (Target " + targetInput.value + "s)\n";
+            // Format: "1)5.6 2)6.1"
+            let msg = "PACER " + targetInput.value + "s:\n";
             sessionData.forEach(lap => {
-                // Simpler format: "#1: 10.55 (OK)"
-                let statusTxt = (lap.status === "✅") ? "OK" : "SLOW";
-                msg += "#" + lap.num + ": " + lap.time + " (" + statusTxt + ")\n";
+                msg += lap.num + ")" + lap.skin + " ";
             });
-            msg += "Total: " + totalDisplay.innerText;
             return msg;
         }
 
@@ -451,7 +449,7 @@
         function showQR() {
             if (sessionData.length === 0) { alert("No laps to share!"); return; }
             
-            let qrText = buildQRText(); // Use the simplified text
+            let qrText = buildQRText();
             
             var qr = new QRious({
               element: document.getElementById('qr-code'),
@@ -464,10 +462,38 @@
         }
 
         function copyToClipboard() {
-            let text = buildQRText();
-            navigator.clipboard.writeText(text).then(() => {
-                alert("Copied to clipboard!");
-            });
+            // We use the FULL rich text for clipboard copy (like WhatsApp)
+            let text = buildWhatsAppText();
+            
+            // Clipboard API (Works on HTTPS/Localhost)
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert("✅ Copied Full Report to Clipboard!");
+                }).catch(err => {
+                    // Fallback attempt
+                    manualCopy(text);
+                });
+            } else {
+                manualCopy(text);
+            }
+        }
+        
+        // Fallback for older phones/non-https
+        function manualCopy(text) {
+             const textArea = document.createElement("textarea");
+             textArea.value = text;
+             textArea.style.position = "fixed"; 
+             textArea.style.left = "-9999px";
+             document.body.appendChild(textArea);
+             textArea.focus();
+             textArea.select();
+             try {
+                 document.execCommand('copy');
+                 alert("✅ Copied Full Report to Clipboard!");
+             } catch (err) {
+                 alert("Could not auto-copy. Please share via WhatsApp instead.");
+             }
+             document.body.removeChild(textArea);
         }
 
         function closeQR() {
