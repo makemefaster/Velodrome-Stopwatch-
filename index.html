@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pro Pacer Final</title>
+    <title>Pro Pacer WA-QR</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         * {
@@ -237,7 +237,7 @@
 
     <div id="qr-modal">
         <canvas id="qr-code"></canvas>
-        <button id="btn-copy" onclick="copyToClipboard()">📋 Copy Text</button>
+        <button id="btn-copy" onclick="copyToClipboard()">📋 Copy Link</button>
         <div id="close-text" onclick="closeQR()">Close X</div>
     </div>
 
@@ -266,7 +266,7 @@
 
     <div class="target-container">
         <label>Target:</label>
-        <input type="number" id="target-input" value="15.0" step="0.1">
+        <input type="number" id="target-input" value="5.0" step="0.1">
     </div>
 
     <div id="laps-container">
@@ -429,12 +429,12 @@
             return msg;
         }
 
-        // MINIMALIST GENERATOR FOR QR
+        // MINIMALIST TEXT FOR QR LINK
         function buildQRText() {
             if (sessionData.length === 0) return "No data";
-            // Format: "1)5.6 2)6.1"
             let msg = "PACER " + targetInput.value + "s:\n";
             sessionData.forEach(lap => {
+                // "1)5.6 "
                 msg += lap.num + ")" + lap.skin + " ";
             });
             return msg;
@@ -449,11 +449,18 @@
         function showQR() {
             if (sessionData.length === 0) { alert("No laps to share!"); return; }
             
-            let qrText = buildQRText();
-            
+            // --- THE MAGIC: Create a WhatsApp Link ---
+            // 1. Get minimal text
+            let rawText = buildQRText();
+            // 2. Encode it for URL
+            let encodedText = encodeURIComponent(rawText);
+            // 3. Create full WhatsApp URL
+            let waLink = "https://wa.me/?text=" + encodedText;
+
+            // Generate QR Code containing the LINK
             var qr = new QRious({
               element: document.getElementById('qr-code'),
-              value: qrText,
+              value: waLink,
               size: 500,  
               level: 'L' 
             });
@@ -462,23 +469,19 @@
         }
 
         function copyToClipboard() {
-            // We use the FULL rich text for clipboard copy (like WhatsApp)
+             // We copy the LINK now, so they can paste it to others if needed
+             // Or we can copy the text. Let's copy the Rich Text for consistency.
             let text = buildWhatsAppText();
             
-            // Clipboard API (Works on HTTPS/Localhost)
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(text).then(() => {
                     alert("✅ Copied Full Report to Clipboard!");
-                }).catch(err => {
-                    // Fallback attempt
-                    manualCopy(text);
-                });
+                }).catch(err => { manualCopy(text); });
             } else {
                 manualCopy(text);
             }
         }
         
-        // Fallback for older phones/non-https
         function manualCopy(text) {
              const textArea = document.createElement("textarea");
              textArea.value = text;
@@ -491,7 +494,7 @@
                  document.execCommand('copy');
                  alert("✅ Copied Full Report to Clipboard!");
              } catch (err) {
-                 alert("Could not auto-copy. Please share via WhatsApp instead.");
+                 alert("Use the Share button instead.");
              }
              document.body.removeChild(textArea);
         }
