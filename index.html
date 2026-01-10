@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pro Pacer QR</title>
+    <title>Pro Pacer QR Fix</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         * {
@@ -23,10 +23,7 @@
             flex-direction: column;
             align-items: center;
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             margin: 0;
             overflow: hidden;
             touch-action: manipulation;
@@ -201,18 +198,22 @@
 
         /* --- QR MODAL --- */
         #qr-modal {
-            display: none; /* Hidden by default */
+            display: none; 
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.95); /* Darker background */
             z-index: 100;
             flex-direction: column;
             align-items: center;
             justify-content: center;
         }
         #qr-modal canvas {
-            border: 10px solid white;
-            border-radius: 10px;
+            border: 15px solid white; /* Thicker border */
+            border-radius: 5px;
+            /* Ensure it fits on screen but uses high resolution */
+            width: 80vw;
+            max-width: 350px;
+            height: auto;
         }
         #qr-text {
             color: white;
@@ -227,7 +228,7 @@
 
     <div id="qr-modal" onclick="closeQR()">
         <canvas id="qr-code"></canvas>
-        <div id="qr-text">Scan to save results<br><small>(Tap to close)</small></div>
+        <div id="qr-text">Scan with Camera/Lens<br><small>(Tap to close)</small></div>
     </div>
 
     <div class="top-nav">
@@ -271,15 +272,12 @@
 
     <script>
         let startTime = 0;       
-        let lastLapTime = 0;     
         let accumulatedTime = 0; 
         let timerInterval;
         let running = false;
         let flashTimeout; 
-        
         let sessionData = []; 
 
-        // Elements
         const timersBar = document.getElementById("timers-bar");
         const totalDisplay = document.getElementById("total-val");
         const lapDisplay = document.getElementById("lap-val");
@@ -290,7 +288,6 @@
         const targetInput = document.getElementById("target-input");
         const qrModal = document.getElementById("qr-modal");
 
-        // Format milliseconds to 00:00.00
         function formatFullTime(ms) {
             let date = new Date(ms);
             let m = date.getUTCMinutes().toString().padStart(2, '0');
@@ -299,7 +296,6 @@
             return `${m}:${s}.${t}`;
         }
         
-        // --- IMPROVED TIMER LOGIC ---
         let totalTimeElapsed = 0;
         let lapTimeElapsed = 0;
         let lastTick = 0;
@@ -323,7 +319,6 @@
 
         function lapOrStart() {
             if (!running) {
-                // START
                 running = true;
                 lastTick = Date.now();
                 timerInterval = setInterval(tick, 30); 
@@ -340,7 +335,6 @@
                     sessionData = []; 
                 }
             } else {
-                // LAP
                 handleLap();
             }
         }
@@ -415,11 +409,11 @@
 
         function buildShareText() {
             if (sessionData.length === 0) return "No data";
-            let msg = "Pacer Report\nTarget: " + targetInput.value + "s\n------------------\n";
+            let msg = "PACER REPORT\nTarget: " + targetInput.value + "s\n------------------\n";
             sessionData.forEach(lap => {
-                msg += "Lap " + lap.num + ": " + lap.time + " " + lap.status + "\n";
+                msg += "#" + lap.num + ": " + lap.time + " " + lap.status + "\n";
             });
-            msg += "------------------\nTotal: " + totalDisplay.innerText + "\n\nBuilt by Michael@makemefaster.com";
+            msg += "------------------\nTotal: " + totalDisplay.innerText + "\nBuilt by Michael@makemefaster.com";
             return msg;
         }
 
@@ -432,17 +426,16 @@
         function showQR() {
             if (sessionData.length === 0) { alert("No laps to share!"); return; }
             
-            // Generate QR Code
             let qrText = buildShareText();
+            
+            // --- UPDATED QR GENERATION ---
             var qr = new QRious({
               element: document.getElementById('qr-code'),
               value: qrText,
-              size: 250,
-              background: 'white',
-              foreground: 'black'
+              size: 500,  // Increased resolution (500px)
+              level: 'L'  // Lower error correction to handle more text
             });
 
-            // Show Modal
             qrModal.style.display = "flex";
         }
 
