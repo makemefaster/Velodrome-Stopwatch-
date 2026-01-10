@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pro Pacer QR Fix</title>
+    <title>Pro Pacer QR+Copy</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         * {
@@ -201,34 +201,43 @@
             display: none; 
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.95); /* Darker background */
+            background: rgba(0,0,0,0.95);
             z-index: 100;
             flex-direction: column;
             align-items: center;
             justify-content: center;
         }
         #qr-modal canvas {
-            border: 15px solid white; /* Thicker border */
+            border: 15px solid white;
             border-radius: 5px;
-            /* Ensure it fits on screen but uses high resolution */
             width: 80vw;
             max-width: 350px;
             height: auto;
+            margin-bottom: 20px;
         }
-        #qr-text {
+        #btn-copy {
+            background: #0044cc;
             color: white;
-            margin-top: 20px;
+            border: 2px solid white;
+            padding: 10px 20px;
+            border-radius: 10px;
             font-size: 1.2rem;
-            text-align: center;
+            cursor: pointer;
+        }
+        #close-text {
+            color: #aaa;
+            margin-top: 20px;
+            font-size: 0.9rem;
         }
 
     </style>
 </head>
 <body>
 
-    <div id="qr-modal" onclick="closeQR()">
+    <div id="qr-modal">
         <canvas id="qr-code"></canvas>
-        <div id="qr-text">Scan with Camera/Lens<br><small>(Tap to close)</small></div>
+        <button id="btn-copy" onclick="copyToClipboard()">📋 Copy Text</button>
+        <div id="close-text" onclick="closeQR()">Tap here to close</div>
     </div>
 
     <div class="top-nav">
@@ -407,36 +416,58 @@
             sessionData = [];
         }
 
-        function buildShareText() {
+        // --- NEW OPTIMIZED GENERATORS ---
+
+        // 1. WhatsApp version (Rich text, Emojis, Footer)
+        function buildWhatsAppText() {
             if (sessionData.length === 0) return "No data";
-            let msg = "PACER REPORT\nTarget: " + targetInput.value + "s\n------------------\n";
+            let msg = "*⏱️ Pacer Session*\nTarget: " + targetInput.value + "s\n------------------\n";
             sessionData.forEach(lap => {
-                msg += "#" + lap.num + ": " + lap.time + " " + lap.status + "\n";
+                msg += "Lap " + lap.num + ": " + lap.time + " " + lap.status + "\n";
             });
-            msg += "------------------\nTotal: " + totalDisplay.innerText + "\nBuilt by Michael@makemefaster.com";
+            msg += "------------------\nTotal: " + totalDisplay.innerText + "\n\n🚀 Built by Michael@makemefaster.com";
+            return msg;
+        }
+
+        // 2. QR Code version (Simplified, No emojis, No footer to save space)
+        function buildQRText() {
+            if (sessionData.length === 0) return "No data";
+            let msg = "PACER REPORT (Target " + targetInput.value + "s)\n";
+            sessionData.forEach(lap => {
+                // Simpler format: "#1: 10.55 (OK)"
+                let statusTxt = (lap.status === "✅") ? "OK" : "SLOW";
+                msg += "#" + lap.num + ": " + lap.time + " (" + statusTxt + ")\n";
+            });
+            msg += "Total: " + totalDisplay.innerText;
             return msg;
         }
 
         function shareToWhatsapp() {
             if (sessionData.length === 0) { alert("No laps to share!"); return; }
-            let encodedMsg = encodeURIComponent(buildShareText());
+            let encodedMsg = encodeURIComponent(buildWhatsAppText());
             window.open("https://wa.me/?text=" + encodedMsg, "_blank");
         }
 
         function showQR() {
             if (sessionData.length === 0) { alert("No laps to share!"); return; }
             
-            let qrText = buildShareText();
+            let qrText = buildQRText(); // Use the simplified text
             
-            // --- UPDATED QR GENERATION ---
             var qr = new QRious({
               element: document.getElementById('qr-code'),
               value: qrText,
-              size: 500,  // Increased resolution (500px)
-              level: 'L'  // Lower error correction to handle more text
+              size: 500,  
+              level: 'L' 
             });
 
             qrModal.style.display = "flex";
+        }
+
+        function copyToClipboard() {
+            let text = buildQRText();
+            navigator.clipboard.writeText(text).then(() => {
+                alert("Copied to clipboard!");
+            });
         }
 
         function closeQR() {
