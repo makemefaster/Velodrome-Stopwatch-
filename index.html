@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pro Pacer WA-QR</title>
+    <title>Pro Pacer Clean</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         * {
@@ -266,7 +266,7 @@
 
     <div class="target-container">
         <label>Target:</label>
-        <input type="number" id="target-input" value="5.0" step="0.1">
+        <input type="number" id="target-input" value="15.0" step="0.1">
     </div>
 
     <div id="laps-container">
@@ -417,26 +417,26 @@
             sessionData = [];
         }
 
-        // --- GENERATORS ---
-
+        // --- NEW CLEAN GENERATOR ---
         function buildWhatsAppText() {
             if (sessionData.length === 0) return "No data";
-            let msg = "*⏱️ Pacer Session*\nTarget: " + targetInput.value + "s\n------------------\n";
+            
+            let msg = "*⏱️ PACER SESSION*\n";
+            msg += "Target: " + targetInput.value + "s\n\n";
+            
             sessionData.forEach(lap => {
-                msg += "Lap " + lap.num + ": " + lap.time + " " + lap.status + "\n";
-            });
-            msg += "------------------\nTotal: " + totalDisplay.innerText + "\n\n🚀 Built by Michael@makemefaster.com";
-            return msg;
-        }
+                // Strip "00:" from start if present (for cleanliness)
+                let cleanTime = lap.time;
+                if(cleanTime.startsWith("00:")) {
+                    cleanTime = cleanTime.substring(3);
+                }
 
-        // MINIMALIST TEXT FOR QR LINK
-        function buildQRText() {
-            if (sessionData.length === 0) return "No data";
-            let msg = "PACER " + targetInput.value + "s:\n";
-            sessionData.forEach(lap => {
-                // "1)5.6 "
-                msg += lap.num + ")" + lap.skin + " ";
+                // Format: Lap 1 -> 15.65 ✅
+                msg += `Lap ${lap.num} -> ${cleanTime}  ${lap.status}\n`;
             });
+            
+            msg += "\nTotal Time: " + totalDisplay.innerText;
+            msg += "\n🚀 Built by Michael@makemefaster.com";
             return msg;
         }
 
@@ -449,15 +449,11 @@
         function showQR() {
             if (sessionData.length === 0) { alert("No laps to share!"); return; }
             
-            // --- THE MAGIC: Create a WhatsApp Link ---
-            // 1. Get minimal text
-            let rawText = buildQRText();
-            // 2. Encode it for URL
+            // For the QR Code, we use the same detailed text so the link opens WA perfectly
+            let rawText = buildWhatsAppText();
             let encodedText = encodeURIComponent(rawText);
-            // 3. Create full WhatsApp URL
             let waLink = "https://wa.me/?text=" + encodedText;
 
-            // Generate QR Code containing the LINK
             var qr = new QRious({
               element: document.getElementById('qr-code'),
               value: waLink,
@@ -469,10 +465,7 @@
         }
 
         function copyToClipboard() {
-             // We copy the LINK now, so they can paste it to others if needed
-             // Or we can copy the text. Let's copy the Rich Text for consistency.
-            let text = buildWhatsAppText();
-            
+            let text = buildWhatsAppText(); 
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(text).then(() => {
                     alert("✅ Copied Full Report to Clipboard!");
@@ -486,22 +479,4 @@
              const textArea = document.createElement("textarea");
              textArea.value = text;
              textArea.style.position = "fixed"; 
-             textArea.style.left = "-9999px";
-             document.body.appendChild(textArea);
-             textArea.focus();
-             textArea.select();
-             try {
-                 document.execCommand('copy');
-                 alert("✅ Copied Full Report to Clipboard!");
-             } catch (err) {
-                 alert("Use the Share button instead.");
-             }
-             document.body.removeChild(textArea);
-        }
-
-        function closeQR() {
-            qrModal.style.display = "none";
-        }
-    </script>
-</body>
-</html>
+             textArea
