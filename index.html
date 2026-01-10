@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pro Pacer Clean</title>
+    <title>Pro Pacer Auto-Save</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         * {
@@ -40,7 +40,7 @@
             padding-left: 15px;
             padding-top: max(15px, env(safe-area-inset-top)); 
             margin-bottom: 5px;
-            z-index: 30;
+            z-index: 50;
         }
 
         .small-btn {
@@ -174,7 +174,7 @@
             width: 100%;
             height: 22vh; 
             padding-bottom: max(10px, env(safe-area-inset-bottom));
-            z-index: 20;
+            z-index: 1000; 
         }
         button {
             border: none;
@@ -202,7 +202,7 @@
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.95);
-            z-index: 100;
+            z-index: 2000;
             flex-direction: column;
             align-items: center;
             justify-content: center;
@@ -237,14 +237,14 @@
 
     <div id="qr-modal">
         <canvas id="qr-code"></canvas>
-        <button id="btn-copy" onclick="copyToClipboard()">📋 Copy Link</button>
-        <div id="close-text" onclick="closeQR()">Close X</div>
+        <button id="btn-copy">📋 Copy Link</button>
+        <div id="close-text">Close X</div>
     </div>
 
     <div class="top-nav">
-        <button id="btn-qr" class="small-btn" onclick="showQR()">QR 📱</button>
-        <button id="btn-whatsapp" class="small-btn" onclick="shareToWhatsapp()">Share 💬</button>
-        <button id="btn-reset" class="small-btn" onclick="resetAll()">RESET</button>
+        <button id="btn-qr" class="small-btn">QR 📱</button>
+        <button id="btn-whatsapp" class="small-btn">Share 💬</button>
+        <button id="btn-reset" class="small-btn">RESET</button>
     </div>
 
     <div id="timers-bar">
@@ -276,39 +276,58 @@
     <div class="footer-credit">Built by Michael@makemefaster.com</div>
 
     <div class="controls">
-        <button id="btn-stop" onclick="stopTimer()">Stop</button>
-        <button id="btn-lap" onclick="lapOrStart()">START</button>
+        <button id="btn-stop">Stop</button>
+        <button id="btn-lap">START</button>
     </div>
 
     <script>
+        // --- SAFE VARIABLES ---
         let startTime = 0;       
         let accumulatedTime = 0; 
         let timerInterval;
         let running = false;
         let flashTimeout; 
         let sessionData = []; 
+        let totalTimeElapsed = 0;
+        let lapTimeElapsed = 0;
+        let lastTick = 0;
 
+        // --- ELEMENTS ---
         const timersBar = document.getElementById("timers-bar");
         const totalDisplay = document.getElementById("total-val");
         const lapDisplay = document.getElementById("lap-val");
         const skinDisplay = document.getElementById("skin-val");
         const lastLapBigDisplay = document.getElementById("last-lap-big");
         const lapBtn = document.getElementById("btn-lap");
+        const stopBtn = document.getElementById("btn-stop");
         const lapsList = document.getElementById("laps-list");
         const targetInput = document.getElementById("target-input");
         const qrModal = document.getElementById("qr-modal");
+        
+        const btnQr = document.getElementById("btn-qr");
+        const btnWa = document.getElementById("btn-whatsapp");
+        const btnReset = document.getElementById("btn-reset");
+        const btnCopy = document.getElementById("btn-copy");
+        const btnCloseQr = document.getElementById("close-text");
+
+        // --- EVENT LISTENERS ---
+        lapBtn.addEventListener('click', lapOrStart);
+        stopBtn.addEventListener('click', stopTimer);
+        btnQr.addEventListener('click', showQR);
+        btnWa.addEventListener('click', shareToWhatsapp);
+        btnReset.addEventListener('click', resetAll);
+        btnCopy.addEventListener('click', copyToClipboard);
+        btnCloseQr.addEventListener('click', closeQR);
+
+        // --- FUNCTIONS ---
 
         function formatFullTime(ms) {
             let date = new Date(ms);
             let m = date.getUTCMinutes().toString().padStart(2, '0');
             let s = date.getUTCSeconds().toString().padStart(2, '0');
             let t = Math.floor(date.getUTCMilliseconds() / 10).toString().padStart(2, '0');
-            return `${m}:${s}.${t}`;
+            return m + ":" + s + "." + t;
         }
-        
-        let totalTimeElapsed = 0;
-        let lapTimeElapsed = 0;
-        let lastTick = 0;
 
         function tick() {
             const now = Date.now();
@@ -329,6 +348,7 @@
 
         function lapOrStart() {
             if (!running) {
+                // START LOGIC
                 running = true;
                 lastTick = Date.now();
                 timerInterval = setInterval(tick, 30); 
@@ -345,6 +365,7 @@
                     sessionData = []; 
                 }
             } else {
+                // LAP LOGIC
                 handleLap();
             }
         }
@@ -378,7 +399,7 @@
 
             let row = document.createElement("div");
             row.className = "lap-row " + (isGood ? "lap-good" : "lap-bad");
-            row.innerHTML = `<span>#${lapNum}</span> <span>${finalLapStr}</span>`;
+            row.innerHTML = "<span>#" + lapNum + "</span> <span>" + finalLapStr + "</span>";
             lapsList.prepend(row);
 
             lapTimeElapsed = 0;
@@ -388,6 +409,12 @@
 
         function stopTimer() {
             if (running) {
+                // --- NEW AUTO-LAP LOGIC ---
+                // If there is any time on the clock (>100ms), assume this is the final lap
+                if (lapTimeElapsed > 100) {
+                    handleLap();
+                }
+
                 running = false;
                 clearInterval(timerInterval);
                 lapBtn.innerText = "RESUME";
@@ -417,23 +444,21 @@
             sessionData = [];
         }
 
-        // --- NEW CLEAN GENERATOR ---
+        // --- STRING GENERATOR ---
         function buildWhatsAppText() {
             if (sessionData.length === 0) return "No data";
             
             let msg = "*⏱️ PACER SESSION*\n";
             msg += "Target: " + targetInput.value + "s\n\n";
             
-            sessionData.forEach(lap => {
-                // Strip "00:" from start if present (for cleanliness)
+            for (let i = 0; i < sessionData.length; i++) {
+                let lap = sessionData[i];
                 let cleanTime = lap.time;
-                if(cleanTime.startsWith("00:")) {
+                if(cleanTime.indexOf("00:") === 0) {
                     cleanTime = cleanTime.substring(3);
                 }
-
-                // Format: Lap 1 -> 15.65 ✅
-                msg += `Lap ${lap.num} -> ${cleanTime}  ${lap.status}\n`;
-            });
+                msg += "Lap " + lap.num + " -> " + cleanTime + " " + lap.status + "\n";
+            }
             
             msg += "\nTotal Time: " + totalDisplay.innerText;
             msg += "\n🚀 Built by Michael@makemefaster.com";
@@ -449,7 +474,6 @@
         function showQR() {
             if (sessionData.length === 0) { alert("No laps to share!"); return; }
             
-            // For the QR Code, we use the same detailed text so the link opens WA perfectly
             let rawText = buildWhatsAppText();
             let encodedText = encodeURIComponent(rawText);
             let waLink = "https://wa.me/?text=" + encodedText;
@@ -479,4 +503,22 @@
              const textArea = document.createElement("textarea");
              textArea.value = text;
              textArea.style.position = "fixed"; 
-             textArea
+             textArea.style.left = "-9999px";
+             document.body.appendChild(textArea);
+             textArea.focus();
+             textArea.select();
+             try {
+                 document.execCommand('copy');
+                 alert("✅ Copied Full Report to Clipboard!");
+             } catch (err) {
+                 alert("Use the Share button instead.");
+             }
+             document.body.removeChild(textArea);
+        }
+
+        function closeQR() {
+            qrModal.style.display = "none";
+        }
+    </script>
+</body>
+</html>
