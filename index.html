@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pro Pacer Auto-Save</title>
+    <title>Pro Pacer Voice</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         * {
@@ -35,7 +35,7 @@
             width: 100%;
             display: flex;
             justify-content: flex-end; 
-            gap: 10px;
+            gap: 8px; /* Slightly tighter gap to fit 4 buttons */
             padding-right: 15px;
             padding-left: 15px;
             padding-top: max(15px, env(safe-area-inset-top)); 
@@ -46,8 +46,8 @@
         .small-btn {
             background: rgba(50,50,50,0.8);
             border: 1px solid #777;
-            padding: 8px 12px; 
-            font-size: 0.85rem;
+            padding: 8px 10px; 
+            font-size: 0.8rem;
             border-radius: 8px;
             color: white;
             cursor: pointer;
@@ -58,6 +58,10 @@
         }
         #btn-whatsapp { background-color: #25D366; border-color: #128C7E; font-weight: bold; }
         #btn-qr { background-color: #fff; color: #000; font-weight: bold; border: none;}
+        
+        /* Sound Toggle Style */
+        .sound-on { background-color: #444; color: #fff; }
+        .sound-off { background-color: #222; color: #777; text-decoration: line-through; }
 
         /* --- ROW 2: TIMERS --- */
         #timers-bar {
@@ -242,6 +246,7 @@
     </div>
 
     <div class="top-nav">
+        <button id="btn-sound" class="small-btn sound-on">🔊</button>
         <button id="btn-qr" class="small-btn">QR 📱</button>
         <button id="btn-whatsapp" class="small-btn">Share 💬</button>
         <button id="btn-reset" class="small-btn">RESET</button>
@@ -281,7 +286,7 @@
     </div>
 
     <script>
-        // --- SAFE VARIABLES ---
+        // --- VARIABLES ---
         let startTime = 0;       
         let accumulatedTime = 0; 
         let timerInterval;
@@ -291,6 +296,7 @@
         let totalTimeElapsed = 0;
         let lapTimeElapsed = 0;
         let lastTick = 0;
+        let soundEnabled = true; // Default to ON
 
         // --- ELEMENTS ---
         const timersBar = document.getElementById("timers-bar");
@@ -304,11 +310,13 @@
         const targetInput = document.getElementById("target-input");
         const qrModal = document.getElementById("qr-modal");
         
+        // Buttons
         const btnQr = document.getElementById("btn-qr");
         const btnWa = document.getElementById("btn-whatsapp");
         const btnReset = document.getElementById("btn-reset");
         const btnCopy = document.getElementById("btn-copy");
         const btnCloseQr = document.getElementById("close-text");
+        const btnSound = document.getElementById("btn-sound");
 
         // --- EVENT LISTENERS ---
         lapBtn.addEventListener('click', lapOrStart);
@@ -318,6 +326,7 @@
         btnReset.addEventListener('click', resetAll);
         btnCopy.addEventListener('click', copyToClipboard);
         btnCloseQr.addEventListener('click', closeQR);
+        btnSound.addEventListener('click', toggleSound);
 
         // --- FUNCTIONS ---
 
@@ -357,6 +366,12 @@
                 lapBtn.style.backgroundColor = "#0044cc"; 
                 targetInput.disabled = true;
                 timersBar.classList.add("status-active");
+                
+                // Warm up speech engine on first click
+                if (soundEnabled) {
+                    let warmUp = new SpeechSynthesisUtterance("");
+                    window.speechSynthesis.speak(warmUp);
+                }
 
                 if(totalTimeElapsed === 0) {
                     document.body.style.backgroundColor = "#000000"; 
@@ -381,6 +396,12 @@
             let skinValNum = parseFloat(skinStr);
 
             lastLapBigDisplay.innerText = skinStr;
+            
+            // --- VOICE ANNOUNCEMENT ---
+            if (soundEnabled) {
+                speakText(skinStr);
+            }
+
             let isGood = skinValNum <= targetVal;
 
             let lapNum = sessionData.length + 1;
@@ -407,14 +428,35 @@
             skinDisplay.innerText = "0.0";
         }
 
+        function speakText(text) {
+            // Cancel any pending speech so it doesn't queue up
+            window.speechSynthesis.cancel();
+            
+            let msg = new SpeechSynthesisUtterance(text);
+            msg.rate = 1.2; // Slightly faster to be snappy
+            msg.pitch = 1.0;
+            window.speechSynthesis.speak(msg);
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            if(soundEnabled) {
+                btnSound.innerHTML = "🔊";
+                btnSound.className = "small-btn sound-on";
+                // Test sound
+                speakText("Voice On");
+            } else {
+                btnSound.innerHTML = "🔇";
+                btnSound.className = "small-btn sound-off";
+                window.speechSynthesis.cancel();
+            }
+        }
+
         function stopTimer() {
             if (running) {
-                // --- NEW AUTO-LAP LOGIC ---
-                // If there is any time on the clock (>100ms), assume this is the final lap
                 if (lapTimeElapsed > 100) {
                     handleLap();
                 }
-
                 running = false;
                 clearInterval(timerInterval);
                 lapBtn.innerText = "RESUME";
@@ -444,7 +486,7 @@
             sessionData = [];
         }
 
-        // --- STRING GENERATOR ---
+        // --- GENERATORS ---
         function buildWhatsAppText() {
             if (sessionData.length === 0) return "No data";
             
