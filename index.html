@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pro Pacer Voice</title>
+    <title>Pro Pacer Fast Voice</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         * {
@@ -35,7 +35,7 @@
             width: 100%;
             display: flex;
             justify-content: flex-end; 
-            gap: 8px; /* Slightly tighter gap to fit 4 buttons */
+            gap: 8px; 
             padding-right: 15px;
             padding-left: 15px;
             padding-top: max(15px, env(safe-area-inset-top)); 
@@ -369,6 +369,7 @@
                 
                 // Warm up speech engine on first click
                 if (soundEnabled) {
+                    // Just a silent init to wake up the engine
                     let warmUp = new SpeechSynthesisUtterance("");
                     window.speechSynthesis.speak(warmUp);
                 }
@@ -397,7 +398,7 @@
 
             lastLapBigDisplay.innerText = skinStr;
             
-            // --- VOICE ANNOUNCEMENT ---
+            // --- VOICE ANNOUNCEMENT (UPDATED) ---
             if (soundEnabled) {
                 speakText(skinStr);
             }
@@ -429,12 +430,20 @@
         }
 
         function speakText(text) {
-            // Cancel any pending speech so it doesn't queue up
+            // Cancel any pending speech
             window.speechSynthesis.cancel();
             
-            let msg = new SpeechSynthesisUtterance(text);
-            msg.rate = 1.2; // Slightly faster to be snappy
-            msg.pitch = 1.0;
+            // Convert "5.6" -> "5 6" to force distinct digit reading without "point"
+            let spokenText = text.replace(".", " ");
+
+            let msg = new SpeechSynthesisUtterance(spokenText);
+            
+            // PUNCHY SETTINGS
+            msg.rate = 1.8;  // Fast!
+            msg.pitch = 1.1; // Slightly sharper
+            msg.volume = 1.0; 
+            msg.lang = 'en-US'; // US English is usually punchier
+
             window.speechSynthesis.speak(msg);
         }
 
@@ -443,7 +452,6 @@
             if(soundEnabled) {
                 btnSound.innerHTML = "🔊";
                 btnSound.className = "small-btn sound-on";
-                // Test sound
                 speakText("Voice On");
             } else {
                 btnSound.innerHTML = "🔇";
