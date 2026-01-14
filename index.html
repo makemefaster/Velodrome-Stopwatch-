@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pro Pacer Schedule</title>
+    <title>Pro Pacer V4</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
-        body { background-color: #000000; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Courier New', Courier, monospace; display: flex; flex-direction: column; align-items: center; position: fixed; top: 0; left: 0; right: 0; bottom: 0; margin: 0; overflow: hidden; touch-action: manipulation; transition: background-color 0.3s ease; }
+        body { background-color: #000000; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Courier New', Courier, monospace; display: flex; flex-direction: column; align-items: center; position: fixed; top: 0; left: 0; right: 0; bottom: 0; margin: 0; overflow: hidden; touch-action: manipulation; transition: background-color 0.2s ease; }
 
         /* --- TOP NAV --- */
         .top-nav { width: 100%; display: flex; justify-content: flex-end; gap: 8px; padding: max(15px, env(safe-area-inset-top)) 15px 5px 15px; z-index: 50; }
@@ -58,8 +58,23 @@
         .controls { display: flex; width: 100%; height: 20vh; padding-bottom: max(10px, env(safe-area-inset-bottom)); z-index: 1000; }
         button { border: none; color: white; font-size: 1.5rem; font-weight: bold; text-transform: uppercase; cursor: pointer; }
         button:active { opacity: 0.8; }
-        #btn-stop { width: 30%; background-color: #cc0000; border-right: 2px solid black; }
+        
+        /* Stop button now has flex column to stack text */
+        #btn-stop { 
+            width: 30%; 
+            background-color: #cc0000; 
+            border-right: 2px solid black; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            line-height: 1.1;
+        }
+        .stop-small { font-size: 1rem; font-weight: normal; opacity: 0.8; }
+        .stop-big { font-size: 2.5rem; font-weight: bold; }
+
         #btn-lap { width: 70%; background-color: #0044cc; font-size: 3rem; }
+        
         .footer-credit { font-size: 0.7rem; color: #666; margin-bottom: 5px; z-index: 10; }
 
         /* --- MODALS --- */
@@ -77,7 +92,7 @@
     </div>
 
     <div class="top-nav">
-        <button id="btn-sound" class="small-btn sound-on">🔊</button>
+        <button id="btn-sound" class="small-btn sound-off">🔇</button>
         <button id="btn-qr" class="small-btn">QR 📱</button>
         <button id="btn-whatsapp" class="small-btn">Share 💬</button>
         <button id="btn-reset" class="small-btn">RESET</button>
@@ -112,21 +127,26 @@
     <div class="footer-credit">Built by Michael@makemefaster.com</div>
 
     <div class="controls">
-        <button id="btn-stop">Stop</button>
+        <button id="btn-stop">
+            <div class="stop-small">STOP</div>
+            <div id="stop-countdown" class="stop-big"></div>
+        </button>
         <button id="btn-lap">START</button>
     </div>
 
     <script>
         // --- VARIABLES ---
         let startTime = 0; let accumulatedTime = 0; let timerInterval; let running = false;
-        let flashTimeout; let sessionData = []; 
+        let sessionData = []; 
         let totalTimeElapsed = 0; let lapTimeElapsed = 0; let lastTick = 0;
-        let soundEnabled = true;
+        
+        // DEFAULT MUTED
+        let soundEnabled = false; 
         
         // SCHEDULE LOGIC
         let isScheduleMode = false;
-        let scheduleTargets = []; // Array of target times
-        let currentLapIndex = 0; // 0 = Lap 1
+        let scheduleTargets = []; 
+        let currentLapIndex = 0; 
 
         // --- ELEMENTS ---
         const totalDisplay = document.getElementById("total-val");
@@ -135,6 +155,7 @@
         const lastLapBigDisplay = document.getElementById("last-lap-big");
         const lapBtn = document.getElementById("btn-lap");
         const stopBtn = document.getElementById("btn-stop");
+        const stopCountdown = document.getElementById("stop-countdown");
         const lapsList = document.getElementById("laps-list");
         const targetInput = document.getElementById("target-input");
         
@@ -207,18 +228,23 @@
                     parseSchedule();
                     currentLapIndex = 0;
                     updateNextLapDisplay();
-                    scheduleInput.style.display = "none"; // Hide input while running
+                    scheduleInput.style.display = "none"; 
                     nextLapDisplay.style.display = "block";
+                    updateStopButtonCount();
+                } else {
+                    stopCountdown.innerText = ""; // Clear if static
                 }
 
                 lastTick = Date.now();
                 timerInterval = setInterval(tick, 30);
                 lapBtn.innerText = "LAP";
                 lapBtn.style.backgroundColor = "#0044cc";
-                document.querySelectorAll('input, textarea').forEach(el => el.disabled = true); // Lock inputs
+                document.querySelectorAll('input, textarea').forEach(el => el.disabled = true);
                 document.getElementById("timers-bar").classList.add("status-active");
                 
+                // Silent warmup only if sound is ON
                 if (soundEnabled) { let warmUp = new SpeechSynthesisUtterance(""); window.speechSynthesis.speak(warmUp); }
+                
                 if(totalTimeElapsed === 0) {
                     document.body.style.backgroundColor = "#000000";
                     lastLapBigDisplay.innerText = "GO!";
@@ -242,7 +268,6 @@
             if (!isScheduleMode) {
                 currentTarget = parseFloat(targetInput.value);
             } else {
-                // Use current index, fallback to last item if we run out
                 let indexToUse = currentLapIndex < scheduleTargets.length ? currentLapIndex : scheduleTargets.length - 1;
                 currentTarget = scheduleTargets[indexToUse];
             }
@@ -252,10 +277,8 @@
 
             let isGood = skinValNum <= currentTarget;
             
-            // Visual Flash
-            if (flashTimeout) clearTimeout(flashTimeout);
+            // PERSISTENT COLOR (Removed setTimeout)
             document.body.style.backgroundColor = isGood ? "#00aa55" : "#dd2222";
-            flashTimeout = setTimeout(() => { document.body.style.backgroundColor = "#000000"; }, 4000);
 
             // Record Data
             let lapNum = sessionData.length + 1;
@@ -276,24 +299,32 @@
             if (isScheduleMode) {
                 currentLapIndex++;
                 updateNextLapDisplay();
+                updateStopButtonCount();
             }
         }
 
         function parseSchedule() {
             let raw = scheduleInput.value;
-            // Split by comma, newline, or space
             let parts = raw.split(/[\n, ]+/).filter(p => p.trim() !== "");
             scheduleTargets = parts.map(p => parseFloat(p));
-            if (scheduleTargets.length === 0) scheduleTargets = [15.0]; // Fallback
+            if (scheduleTargets.length === 0) scheduleTargets = [15.0];
         }
 
         function updateNextLapDisplay() {
             let nextIndex = currentLapIndex; 
-            // If we are currently running Lap 1 (index 0), the target is index 0.
-            // If we just finished Lap 1, currentLapIndex becomes 1.
             let displayIndex = nextIndex < scheduleTargets.length ? nextIndex : scheduleTargets.length - 1;
             let val = scheduleTargets[displayIndex];
             nextLapDisplay.innerText = "Current Lap Target: " + val + "s";
+        }
+
+        function updateStopButtonCount() {
+            if(isScheduleMode && scheduleTargets.length > 0) {
+                let remaining = scheduleTargets.length - currentLapIndex;
+                if(remaining < 0) remaining = 0;
+                stopCountdown.innerText = remaining;
+            } else {
+                stopCountdown.innerText = "";
+            }
         }
 
         function stopTimer() {
@@ -301,6 +332,10 @@
                 if (lapTimeElapsed > 100) handleLap();
                 running = false;
                 clearInterval(timerInterval);
+                
+                // Clear color on STOP
+                document.body.style.backgroundColor = "#000000";
+
                 lapBtn.innerText = "RESUME";
                 lapBtn.style.backgroundColor = "#00aa55";
                 document.querySelectorAll('input, textarea').forEach(el => el.disabled = false);
@@ -316,13 +351,13 @@
 
         function resetAll() {
             stopTimer();
-            if (flashTimeout) clearTimeout(flashTimeout);
             document.body.style.backgroundColor = "#000000";
             totalTimeElapsed = 0; lapTimeElapsed = 0;
             totalDisplay.innerText = "00:00.00"; lapDisplay.innerText = "00:00.00"; skinDisplay.innerText = "0.0";
             lastLapBigDisplay.innerText = "READY"; lastLapBigDisplay.classList.add("pulsing-text");
             lapsList.innerHTML = ""; lapBtn.innerText = "START"; lapBtn.style.backgroundColor = "#0044cc";
             sessionData = []; currentLapIndex = 0;
+            stopCountdown.innerText = "";
             document.querySelectorAll('input, textarea').forEach(el => el.disabled = false);
         }
 
@@ -337,7 +372,10 @@
         function speakText(text) {
             window.speechSynthesis.cancel();
             let msg = new SpeechSynthesisUtterance(text.replace(".", " "));
-            msg.rate = 1.8; msg.pitch = 1.1; msg.lang = 'en-US';
+            // MODIFIED VOICE SETTINGS
+            msg.rate = 1.4; // Fast but not robot-fast
+            msg.pitch = 1.0; 
+            msg.lang = 'en-US';
             window.speechSynthesis.speak(msg);
         }
         
