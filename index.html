@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pro Pacer V4</title>
+    <title>Pro Pacer V5</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -43,7 +43,8 @@
         #target-input { -webkit-user-select: text; user-select: text; background: #222; border: 1px solid #555; color: #00ffcc; font-size: 1.8rem; width: 100px; text-align: center; border-radius: 8px; font-family: monospace; }
         
         /* Schedule Input */
-        #schedule-input { -webkit-user-select: text; user-select: text; display: none; width: 100%; height: 60px; background: #222; border: 1px solid #555; color: #fff; font-size: 0.9rem; font-family: monospace; border-radius: 5px; padding: 5px; }
+        #schedule-ui { display: none; width: 100%; } /* Hidden by default until toggled */
+        #schedule-input { -webkit-user-select: text; user-select: text; width: 100%; height: 80px; background: #222; border: 1px solid #555; color: #fff; font-size: 0.9rem; font-family: monospace; border-radius: 5px; padding: 5px; }
         
         .next-target-display { font-size: 0.8rem; color: #aaa; margin-top: 5px; text-align: center; display: none;}
 
@@ -59,7 +60,6 @@
         button { border: none; color: white; font-size: 1.5rem; font-weight: bold; text-transform: uppercase; cursor: pointer; }
         button:active { opacity: 0.8; }
         
-        /* Stop button now has flex column to stack text */
         #btn-stop { 
             width: 30%; 
             background-color: #cc0000; 
@@ -117,7 +117,7 @@
             <input type="number" id="target-input" value="15.0" step="0.1">
         </div>
 
-        <div id="schedule-ui" style="display:none;">
+        <div id="schedule-ui">
             <textarea id="schedule-input" placeholder="Paste times here...&#10;15.5&#10;15.2&#10;15.0"></textarea>
             <div id="next-lap-display" class="next-target-display">Next Lap Target: --</div>
         </div>
@@ -139,8 +139,6 @@
         let startTime = 0; let accumulatedTime = 0; let timerInterval; let running = false;
         let sessionData = []; 
         let totalTimeElapsed = 0; let lapTimeElapsed = 0; let lastTick = 0;
-        
-        // DEFAULT MUTED
         let soundEnabled = false; 
         
         // SCHEDULE LOGIC
@@ -168,7 +166,15 @@
         const nextLapDisplay = document.getElementById("next-lap-display");
 
         // --- BUTTON LISTENERS ---
-        lapBtn.addEventListener('click', lapOrStart);
+        lapBtn.addEventListener('click', () => {
+            // Special check: If in Finish Mode (1 to go), this button acts as STOP
+            if(running && isScheduleMode && getRemainingLaps() === 1) {
+                stopTimer();
+            } else {
+                lapOrStart();
+            }
+        });
+
         stopBtn.addEventListener('click', stopTimer);
         document.getElementById("btn-qr").addEventListener('click', showQR);
         document.getElementById("btn-whatsapp").addEventListener('click', shareToWhatsapp);
@@ -195,11 +201,23 @@
             }
         }
 
-        // --- KEYBOARD LISTENER (Logitech R500) ---
+        // --- KEYBOARD LISTENER ---
         document.addEventListener('keydown', function(event) {
             if(["PageDown", "PageUp", "ArrowRight", "ArrowLeft", " "].indexOf(event.code) > -1) event.preventDefault();
-            if (event.key === "PageDown" || event.key === "ArrowRight" || event.key === " ") lapOrStart();
-            if (event.key === "PageUp" || event.key === "ArrowLeft") stopTimer();
+            
+            // Big Button Trigger
+            if (event.key === "PageDown" || event.key === "ArrowRight" || event.key === " ") {
+                 if(running && isScheduleMode && getRemainingLaps() === 1) {
+                    stopTimer();
+                 } else {
+                    lapOrStart();
+                 }
+            }
+
+            // Small Button Trigger
+            if (event.key === "PageUp" || event.key === "ArrowLeft") {
+                stopTimer();
+            }
         });
 
         // --- TIMER FUNCTIONS ---
@@ -223,7 +241,6 @@
                 // START
                 running = true;
                 
-                // PARSE SCHEDULE IF NEEDED
                 if (isScheduleMode) {
                     parseSchedule();
                     currentLapIndex = 0;
@@ -232,7 +249,7 @@
                     nextLapDisplay.style.display = "block";
                     updateStopButtonCount();
                 } else {
-                    stopCountdown.innerText = ""; // Clear if static
+                    stopCountdown.innerText = "";
                 }
 
                 lastTick = Date.now();
@@ -242,7 +259,6 @@
                 document.querySelectorAll('input, textarea').forEach(el => el.disabled = true);
                 document.getElementById("timers-bar").classList.add("status-active");
                 
-                // Silent warmup only if sound is ON
                 if (soundEnabled) { let warmUp = new SpeechSynthesisUtterance(""); window.speechSynthesis.speak(warmUp); }
                 
                 if(totalTimeElapsed === 0) {
@@ -263,7 +279,6 @@
             let skinStr = skinDisplay.innerText;
             let skinValNum = parseFloat(skinStr);
 
-            // DETERMINE TARGET
             let currentTarget = 0;
             if (!isScheduleMode) {
                 currentTarget = parseFloat(targetInput.value);
@@ -276,18 +291,14 @@
             if (soundEnabled) speakText(skinStr);
 
             let isGood = skinValNum <= currentTarget;
-            
-            // PERSISTENT COLOR (Removed setTimeout)
             document.body.style.backgroundColor = isGood ? "#00aa55" : "#dd2222";
 
-            // Record Data
             let lapNum = sessionData.length + 1;
             sessionData.push({ num: lapNum, time: finalLapStr, skin: skinStr, target: currentTarget, status: isGood ? "✅" : "❌" });
 
-            // Add to list
             let row = document.createElement("div");
             row.className = "lap-row " + (isGood ? "lap-good" : "lap-bad");
-            row.innerHTML = `<span>#${lapNum} <small class="target-tag">[Target: ${currentTarget}]</small></span> <span>${finalLapStr}</span>`;
+            row.innerHTML = `<span>#${lapNum} <small class="target-tag">[Target: ${currentTarget}]</small></span> <span>${removeLeadingZeros(finalLapStr)}</span>`;
             lapsList.prepend(row);
 
             // Reset Lap
@@ -295,7 +306,6 @@
             lapDisplay.innerText = "00:00.00";
             skinDisplay.innerText = "0.0";
 
-            // Advance Schedule
             if (isScheduleMode) {
                 currentLapIndex++;
                 updateNextLapDisplay();
@@ -310,6 +320,12 @@
             if (scheduleTargets.length === 0) scheduleTargets = [15.0];
         }
 
+        function getRemainingLaps() {
+            if(!isScheduleMode) return 999;
+            let remaining = scheduleTargets.length - currentLapIndex;
+            return remaining < 0 ? 0 : remaining;
+        }
+
         function updateNextLapDisplay() {
             let nextIndex = currentLapIndex; 
             let displayIndex = nextIndex < scheduleTargets.length ? nextIndex : scheduleTargets.length - 1;
@@ -319,9 +335,17 @@
 
         function updateStopButtonCount() {
             if(isScheduleMode && scheduleTargets.length > 0) {
-                let remaining = scheduleTargets.length - currentLapIndex;
-                if(remaining < 0) remaining = 0;
+                let remaining = getRemainingLaps();
                 stopCountdown.innerText = remaining;
+                
+                // CRITICAL: Logic to switch Button 1 to "STOP"
+                if (remaining === 1) {
+                    lapBtn.innerText = "FINISH";
+                    lapBtn.style.backgroundColor = "#cc0000"; // Turn Red
+                } else {
+                    lapBtn.innerText = "LAP";
+                    lapBtn.style.backgroundColor = "#0044cc"; // Back to Blue
+                }
             } else {
                 stopCountdown.innerText = "";
             }
@@ -329,15 +353,16 @@
 
         function stopTimer() {
             if (running) {
+                // Record the final lap if it was a running timer
                 if (lapTimeElapsed > 100) handleLap();
+                
                 running = false;
                 clearInterval(timerInterval);
-                
-                // Clear color on STOP
                 document.body.style.backgroundColor = "#000000";
 
                 lapBtn.innerText = "RESUME";
                 lapBtn.style.backgroundColor = "#00aa55";
+                
                 document.querySelectorAll('input, textarea').forEach(el => el.disabled = false);
                 document.getElementById("timers-bar").classList.remove("status-active");
                 lastLapBigDisplay.classList.remove("pulsing-text");
@@ -368,12 +393,23 @@
                    date.getUTCSeconds().toString().padStart(2,'0') + "." + 
                    Math.floor(date.getUTCMilliseconds()/10).toString().padStart(2,'0');
         }
+
+        function removeLeadingZeros(timeStr) {
+            // Converts "00:05.2" -> "5.2" or "01:20.5" -> "1:20.5"
+            // Simple regex: Remove leading zeros and colon if total is < 1 min
+            if(timeStr.startsWith("00:")) {
+                let s = timeStr.substring(3);
+                if(s.startsWith("0")) return s.substring(1);
+                return s;
+            }
+            if(timeStr.startsWith("0")) return timeStr.substring(1);
+            return timeStr;
+        }
         
         function speakText(text) {
             window.speechSynthesis.cancel();
             let msg = new SpeechSynthesisUtterance(text.replace(".", " "));
-            // MODIFIED VOICE SETTINGS
-            msg.rate = 1.4; // Fast but not robot-fast
+            msg.rate = 1.4; 
             msg.pitch = 1.0; 
             msg.lang = 'en-US';
             window.speechSynthesis.speak(msg);
@@ -387,19 +423,31 @@
         }
 
         // --- SHARE & EXPORT ---
-        function buildCSV() {
+        function buildExportText() {
             if (sessionData.length === 0) return "No Data";
-            let csv = "Lap,Target,Time,Status\n";
+            let now = new Date();
+            let dateStr = now.toLocaleDateString() + " " + now.toLocaleTimeString();
+            
+            let txt = `PACER SESSION REPORT\n`;
+            txt += `Date: ${dateStr}\n`;
+            txt += `Barometric Pressure: ______ hPa\n`; // Placeholder
+            txt += `--------------------------\n`;
+            
             sessionData.forEach(lap => {
-                csv += `${lap.num},${lap.target},${lap.time},${lap.status}\n`;
+                let cleanTime = removeLeadingZeros(lap.time);
+                txt += `Lap ${lap.num}: ${cleanTime} (Target: ${lap.target}) ${lap.status}\n`;
             });
-            return csv;
+            
+            txt += `--------------------------\n`;
+            txt += `Total: ${totalDisplay.innerText}\n`;
+            txt += `stopwatch by makemefaster.com`;
+            return txt;
         }
 
         function copyToClipboard() {
-            let text = buildCSV();
+            let text = buildExportText();
             if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(() => alert("✅ Copied CSV Data! Paste into Google Sheets.")).catch(err => manualCopy(text));
+                navigator.clipboard.writeText(text).then(() => alert("✅ Copied Report!")).catch(err => manualCopy(text));
             } else { manualCopy(text); }
         }
         
@@ -407,20 +455,18 @@
             const ta = document.createElement("textarea");
             ta.value = text; ta.style.position = "fixed"; ta.style.left = "-9999px";
             document.body.appendChild(ta); ta.focus(); ta.select();
-            try { document.execCommand('copy'); alert("✅ Copied CSV Data!"); } catch (e) { alert("Failed to copy"); }
+            try { document.execCommand('copy'); alert("✅ Copied Report!"); } catch (e) { alert("Failed to copy"); }
             document.body.removeChild(ta);
         }
 
         function shareToWhatsapp() {
             if (sessionData.length === 0) { alert("No data!"); return; }
-            let msg = "*PACER REPORT*\n";
-            sessionData.forEach(l => msg += `L${l.num} (${l.target}): ${l.time} ${l.status}\n`);
-            window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
+            window.open("https://wa.me/?text=" + encodeURIComponent(buildExportText()), "_blank");
         }
 
         function showQR() {
             if (sessionData.length === 0) { alert("No data!"); return; }
-            var qr = new QRious({ element: document.getElementById('qr-code'), value: "https://wa.me/?text=" + encodeURIComponent(buildCSV()), size: 500 });
+            var qr = new QRious({ element: document.getElementById('qr-code'), value: "https://wa.me/?text=" + encodeURIComponent(buildExportText()), size: 500 });
             document.getElementById("qr-modal").style.display = "flex";
         }
     </script>
