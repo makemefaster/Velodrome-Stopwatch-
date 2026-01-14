@@ -5,236 +5,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pro Pacer Fast Voice</title>
+    <title>Pro Pacer Schedule</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
+        * { box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #000000; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Courier New', Courier, monospace; display: flex; flex-direction: column; align-items: center; position: fixed; top: 0; left: 0; right: 0; bottom: 0; margin: 0; overflow: hidden; touch-action: manipulation; transition: background-color 0.3s ease; }
 
-        body {
-            background-color: #000000;
-            color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, 'Courier New', Courier, monospace;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            margin: 0;
-            overflow: hidden;
-            touch-action: manipulation;
-            transition: background-color 0.3s ease;
-        }
-
-        /* --- ROW 1: TOP MENU --- */
-        .top-nav {
-            width: 100%;
-            display: flex;
-            justify-content: flex-end; 
-            gap: 8px; 
-            padding-right: 15px;
-            padding-left: 15px;
-            padding-top: max(15px, env(safe-area-inset-top)); 
-            margin-bottom: 5px;
-            z-index: 50;
-        }
-
-        .small-btn {
-            background: rgba(50,50,50,0.8);
-            border: 1px solid #777;
-            padding: 8px 10px; 
-            font-size: 0.8rem;
-            border-radius: 8px;
-            color: white;
-            cursor: pointer;
-            text-decoration: none; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+        /* --- TOP NAV --- */
+        .top-nav { width: 100%; display: flex; justify-content: flex-end; gap: 8px; padding: max(15px, env(safe-area-inset-top)) 15px 5px 15px; z-index: 50; }
+        .small-btn { background: rgba(50,50,50,0.8); border: 1px solid #777; padding: 8px 10px; font-size: 0.8rem; border-radius: 8px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         #btn-whatsapp { background-color: #25D366; border-color: #128C7E; font-weight: bold; }
-        #btn-qr { background-color: #fff; color: #000; font-weight: bold; border: none;}
-        
-        /* Sound Toggle Style */
         .sound-on { background-color: #444; color: #fff; }
         .sound-off { background-color: #222; color: #777; text-decoration: line-through; }
 
-        /* --- ROW 2: TIMERS --- */
-        #timers-bar {
-            display: flex;
-            justify-content: space-between;
-            width: 94%;
-            padding: 5px 0;
-            color: #555;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            border-bottom: 1px solid #222; 
-        }
-        
-        .timer-col {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 33%; 
-        }
-
-        .timer-val {
-            font-size: 1.1rem;
-            font-weight: bold;
-            margin-top: 2px;
-            font-variant-numeric: tabular-nums; 
-        }
-
+        /* --- TIMERS --- */
+        #timers-bar { display: flex; justify-content: space-between; width: 94%; padding: 5px 0; color: #555; font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #222; }
+        .timer-col { display: flex; flex-direction: column; align-items: center; width: 33%; }
+        .timer-val { font-size: 1.1rem; font-weight: bold; margin-top: 2px; font-variant-numeric: tabular-nums; }
         .status-active .timer-val { color: #fff; text-shadow: 0 0 5px rgba(255, 255, 255, 0.5); }
-        .status-active .timer-label { color: #aaa; }
-        #skin-val { color: #00ffcc; } 
+        #skin-val { color: #00ffcc; }
 
-        /* --- MAIN HUGE DISPLAY --- */
-        #last-lap-big {
-            flex-grow: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 25vh;
-            font-weight: bold;
-            letter-spacing: -0.12em; 
-            text-shadow: 4px 4px 0px #000;
-            position: relative;
-            z-index: 10;
-            width: 100%;
-            text-align: center;
-        }
+        /* --- BIG DISPLAY --- */
+        #last-lap-big { flex-grow: 1; display: flex; align-items: center; justify-content: center; font-size: 25vh; font-weight: bold; letter-spacing: -0.12em; text-shadow: 4px 4px 0px #000; width: 100%; text-align: center; z-index: 10; }
+        .pulsing-text { animation: pulse 1s infinite; font-size: 12vh !important; letter-spacing: 0 !important; color: #00ffcc; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-        .pulsing-text {
-            animation: pulse 1s infinite;
-            font-size: 12vh !important;
-            letter-spacing: 0 !important;
-            color: #00ffcc;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-
-        /* --- TARGET INPUT --- */
-        .target-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-            background: rgba(0,0,0,0.5);
-            padding: 8px 20px;
-            border-radius: 12px;
-            z-index: 20;
-        }
-        label { font-size: 1.2rem; color: #ddd; text-transform: uppercase;}
+        /* --- TARGET / SCHEDULE SECTION --- */
+        .target-wrapper { width: 94%; z-index: 20; background: rgba(0,0,0,0.5); border-radius: 12px; padding: 10px; margin-bottom: 5px; border: 1px solid #333; }
+        .mode-toggle { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .mode-btn { background: #222; border: 1px solid #555; color: #888; padding: 5px 15px; border-radius: 5px; font-size: 0.8rem; width: 48%; }
+        .mode-active { background: #0044cc; color: white; border-color: #0066ff; }
         
-        #target-input {
-            -webkit-user-select: text; 
-            user-select: text;
-            background: #222;
-            border: 1px solid #555;
-            color: #00ffcc;
-            font-size: 2rem;
-            width: 90px;
-            text-align: center;
-            border-radius: 8px;
-            font-family: 'Courier New', Courier, monospace;
-            padding: 5px;
-        }
+        .input-area { display: flex; align-items: center; justify-content: center; gap: 10px; }
+        label { font-size: 1rem; color: #ddd; text-transform: uppercase; }
+        
+        /* Static Input */
+        #target-input { -webkit-user-select: text; user-select: text; background: #222; border: 1px solid #555; color: #00ffcc; font-size: 1.8rem; width: 100px; text-align: center; border-radius: 8px; font-family: monospace; }
+        
+        /* Schedule Input */
+        #schedule-input { -webkit-user-select: text; user-select: text; display: none; width: 100%; height: 60px; background: #222; border: 1px solid #555; color: #fff; font-size: 0.9rem; font-family: monospace; border-radius: 5px; padding: 5px; }
+        
+        .next-target-display { font-size: 0.8rem; color: #aaa; margin-top: 5px; text-align: center; display: none;}
 
-        /* --- LAP HISTORY LIST --- */
-        #laps-container {
-            height: 18vh;
-            width: 94%;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch; 
-            text-align: center;
-            font-size: 1rem;
-            border-top: 1px solid #555;
-            margin-bottom: 5px;
-            background: rgba(0,0,0,0.3);
-            z-index: 20;
-            border-radius: 8px;
-        }
-        .lap-row {
-            padding: 8px 12px;
-            border-bottom: 1px solid #333;
-            display: flex;
-            justify-content: space-between;
-        }
-        .lap-good { color: #ffffff; font-weight: bold; } 
+        /* --- LAP LIST --- */
+        #laps-container { height: 15vh; width: 94%; overflow-y: auto; -webkit-overflow-scrolling: touch; text-align: center; font-size: 1rem; border-top: 1px solid #555; margin-bottom: 5px; background: rgba(0,0,0,0.3); z-index: 20; border-radius: 8px; }
+        .lap-row { padding: 8px 12px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; }
+        .lap-good { color: #ffffff; font-weight: bold; }
         .lap-bad { color: #000000; font-weight: bold; }
+        .target-tag { color: #888; font-size: 0.8rem; margin-left: 5px; }
 
-        /* --- BUTTONS --- */
-        .controls {
-            display: flex;
-            width: 100%;
-            height: 22vh; 
-            padding-bottom: max(10px, env(safe-area-inset-bottom));
-            z-index: 1000; 
-        }
-        button {
-            border: none;
-            color: white;
-            font-size: 1.5rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            cursor: pointer;
-        }
-        button:active { opacity: 0.8; } 
-        
-        #btn-stop { width: 30%; background-color: #cc0000; border-right: 2px solid black;}
+        /* --- CONTROLS --- */
+        .controls { display: flex; width: 100%; height: 20vh; padding-bottom: max(10px, env(safe-area-inset-bottom)); z-index: 1000; }
+        button { border: none; color: white; font-size: 1.5rem; font-weight: bold; text-transform: uppercase; cursor: pointer; }
+        button:active { opacity: 0.8; }
+        #btn-stop { width: 30%; background-color: #cc0000; border-right: 2px solid black; }
         #btn-lap { width: 70%; background-color: #0044cc; font-size: 3rem; }
+        .footer-credit { font-size: 0.7rem; color: #666; margin-bottom: 5px; z-index: 10; }
 
-        .footer-credit {
-            font-size: 0.7rem;
-            color: #666;
-            margin-bottom: 5px;
-            z-index: 10;
-        }
-
-        /* --- QR MODAL --- */
-        #qr-modal {
-            display: none; 
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.95);
-            z-index: 2000;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        #qr-modal canvas {
-            border: 15px solid white;
-            border-radius: 5px;
-            width: 80vw;
-            max-width: 350px;
-            height: auto;
-            margin-bottom: 20px;
-        }
-        #btn-copy {
-            background: #0044cc;
-            color: white;
-            border: 2px solid white;
-            padding: 15px 30px;
-            border-radius: 10px;
-            font-size: 1.2rem;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
-        #close-text {
-            color: #aaa;
-            font-size: 1rem;
-            text-decoration: underline;
-        }
-
+        /* --- MODALS --- */
+        #qr-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 2000; flex-direction: column; align-items: center; justify-content: center; }
+        #qr-modal canvas { border: 15px solid white; border-radius: 5px; width: 80vw; max-width: 350px; }
+        #btn-copy { background: #0044cc; color: white; border: 2px solid white; padding: 15px 30px; border-radius: 10px; font-size: 1.2rem; margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -242,7 +73,7 @@
     <div id="qr-modal">
         <canvas id="qr-code"></canvas>
         <button id="btn-copy">📋 Copy Link</button>
-        <div id="close-text">Close X</div>
+        <div id="close-text" style="color:#aaa; text-decoration:underline;" onclick="document.getElementById('qr-modal').style.display='none'">Close X</div>
     </div>
 
     <div class="top-nav">
@@ -253,31 +84,31 @@
     </div>
 
     <div id="timers-bar">
-        <div class="timer-col">
-            <span class="timer-label">Total</span>
-            <span id="total-val" class="timer-val">00:00.0</span>
-        </div>
-        <div class="timer-col">
-            <span class="timer-label">Lap</span>
-            <span id="lap-val" class="timer-val">00:00.0</span>
-        </div>
-        <div class="timer-col">
-            <span class="timer-label">Skin</span>
-            <span id="skin-val" class="timer-val">0.0</span>
-        </div>
+        <div class="timer-col"><span class="timer-label">Total</span><span id="total-val" class="timer-val">00:00.0</span></div>
+        <div class="timer-col"><span class="timer-label">Lap</span><span id="lap-val" class="timer-val">00:00.0</span></div>
+        <div class="timer-col"><span class="timer-label">Skin</span><span id="skin-val" class="timer-val">0.0</span></div>
     </div>
 
     <div id="last-lap-big" class="pulsing-text">READY</div>
 
-    <div class="target-container">
-        <label>Target:</label>
-        <input type="number" id="target-input" value="15.0" step="0.1">
+    <div class="target-wrapper">
+        <div class="mode-toggle">
+            <button id="mode-static" class="mode-btn mode-active">Static Target</button>
+            <button id="mode-schedule" class="mode-btn">Race Schedule</button>
+        </div>
+
+        <div id="static-ui" class="input-area">
+            <label>Target:</label>
+            <input type="number" id="target-input" value="15.0" step="0.1">
+        </div>
+
+        <div id="schedule-ui" style="display:none;">
+            <textarea id="schedule-input" placeholder="Paste times here...&#10;15.5&#10;15.2&#10;15.0"></textarea>
+            <div id="next-lap-display" class="next-target-display">Next Lap Target: --</div>
+        </div>
     </div>
 
-    <div id="laps-container">
-        <div id="laps-list"></div>
-    </div>
-
+    <div id="laps-container"><div id="laps-list"></div></div>
     <div class="footer-credit">Built by Michael@makemefaster.com</div>
 
     <div class="controls">
@@ -287,19 +118,17 @@
 
     <script>
         // --- VARIABLES ---
-        let startTime = 0;       
-        let accumulatedTime = 0; 
-        let timerInterval;
-        let running = false;
-        let flashTimeout; 
-        let sessionData = []; 
-        let totalTimeElapsed = 0;
-        let lapTimeElapsed = 0;
-        let lastTick = 0;
-        let soundEnabled = true; // Default to ON
+        let startTime = 0; let accumulatedTime = 0; let timerInterval; let running = false;
+        let flashTimeout; let sessionData = []; 
+        let totalTimeElapsed = 0; let lapTimeElapsed = 0; let lastTick = 0;
+        let soundEnabled = true;
+        
+        // SCHEDULE LOGIC
+        let isScheduleMode = false;
+        let scheduleTargets = []; // Array of target times
+        let currentLapIndex = 0; // 0 = Lap 1
 
         // --- ELEMENTS ---
-        const timersBar = document.getElementById("timers-bar");
         const totalDisplay = document.getElementById("total-val");
         const lapDisplay = document.getElementById("lap-val");
         const skinDisplay = document.getElementById("skin-val");
@@ -308,47 +137,60 @@
         const stopBtn = document.getElementById("btn-stop");
         const lapsList = document.getElementById("laps-list");
         const targetInput = document.getElementById("target-input");
-        const qrModal = document.getElementById("qr-modal");
         
-        // Buttons
-        const btnQr = document.getElementById("btn-qr");
-        const btnWa = document.getElementById("btn-whatsapp");
-        const btnReset = document.getElementById("btn-reset");
-        const btnCopy = document.getElementById("btn-copy");
-        const btnCloseQr = document.getElementById("close-text");
-        const btnSound = document.getElementById("btn-sound");
+        // Mode Elements
+        const btnStatic = document.getElementById("mode-static");
+        const btnSchedule = document.getElementById("mode-schedule");
+        const staticUI = document.getElementById("static-ui");
+        const scheduleUI = document.getElementById("schedule-ui");
+        const scheduleInput = document.getElementById("schedule-input");
+        const nextLapDisplay = document.getElementById("next-lap-display");
 
-        // --- EVENT LISTENERS ---
+        // --- BUTTON LISTENERS ---
         lapBtn.addEventListener('click', lapOrStart);
         stopBtn.addEventListener('click', stopTimer);
-        btnQr.addEventListener('click', showQR);
-        btnWa.addEventListener('click', shareToWhatsapp);
-        btnReset.addEventListener('click', resetAll);
-        btnCopy.addEventListener('click', copyToClipboard);
-        btnCloseQr.addEventListener('click', closeQR);
-        btnSound.addEventListener('click', toggleSound);
+        document.getElementById("btn-qr").addEventListener('click', showQR);
+        document.getElementById("btn-whatsapp").addEventListener('click', shareToWhatsapp);
+        document.getElementById("btn-reset").addEventListener('click', resetAll);
+        document.getElementById("btn-copy").addEventListener('click', copyToClipboard);
+        document.getElementById("btn-sound").addEventListener('click', toggleSound);
 
-        // --- FUNCTIONS ---
+        // --- MODE SWITCHING ---
+        btnStatic.addEventListener('click', () => setMode(false));
+        btnSchedule.addEventListener('click', () => setMode(true));
 
-        function formatFullTime(ms) {
-            let date = new Date(ms);
-            let m = date.getUTCMinutes().toString().padStart(2, '0');
-            let s = date.getUTCSeconds().toString().padStart(2, '0');
-            let t = Math.floor(date.getUTCMilliseconds() / 10).toString().padStart(2, '0');
-            return m + ":" + s + "." + t;
+        function setMode(isSchedule) {
+            isScheduleMode = isSchedule;
+            if (isSchedule) {
+                btnSchedule.classList.add("mode-active");
+                btnStatic.classList.remove("mode-active");
+                scheduleUI.style.display = "block";
+                staticUI.style.display = "none";
+            } else {
+                btnStatic.classList.add("mode-active");
+                btnSchedule.classList.remove("mode-active");
+                staticUI.style.display = "flex";
+                scheduleUI.style.display = "none";
+            }
         }
 
+        // --- KEYBOARD LISTENER (Logitech R500) ---
+        document.addEventListener('keydown', function(event) {
+            if(["PageDown", "PageUp", "ArrowRight", "ArrowLeft", " "].indexOf(event.code) > -1) event.preventDefault();
+            if (event.key === "PageDown" || event.key === "ArrowRight" || event.key === " ") lapOrStart();
+            if (event.key === "PageUp" || event.key === "ArrowLeft") stopTimer();
+        });
+
+        // --- TIMER FUNCTIONS ---
         function tick() {
             const now = Date.now();
             const delta = now - lastTick;
             lastTick = now;
-
             totalTimeElapsed += delta;
             lapTimeElapsed += delta;
-
             totalDisplay.innerText = formatFullTime(totalTimeElapsed);
             lapDisplay.innerText = formatFullTime(lapTimeElapsed);
-
+            
             let totalSeconds = Math.floor(lapTimeElapsed / 1000);
             let secondsDigit = totalSeconds % 10;
             let tenthsDigit = Math.floor((lapTimeElapsed % 1000) / 100);
@@ -357,121 +199,118 @@
 
         function lapOrStart() {
             if (!running) {
-                // START LOGIC
+                // START
                 running = true;
-                lastTick = Date.now();
-                timerInterval = setInterval(tick, 30); 
                 
-                lapBtn.innerText = "LAP";
-                lapBtn.style.backgroundColor = "#0044cc"; 
-                targetInput.disabled = true;
-                timersBar.classList.add("status-active");
-                
-                // Warm up speech engine on first click
-                if (soundEnabled) {
-                    // Just a silent init to wake up the engine
-                    let warmUp = new SpeechSynthesisUtterance("");
-                    window.speechSynthesis.speak(warmUp);
+                // PARSE SCHEDULE IF NEEDED
+                if (isScheduleMode) {
+                    parseSchedule();
+                    currentLapIndex = 0;
+                    updateNextLapDisplay();
+                    scheduleInput.style.display = "none"; // Hide input while running
+                    nextLapDisplay.style.display = "block";
                 }
 
+                lastTick = Date.now();
+                timerInterval = setInterval(tick, 30);
+                lapBtn.innerText = "LAP";
+                lapBtn.style.backgroundColor = "#0044cc";
+                document.querySelectorAll('input, textarea').forEach(el => el.disabled = true); // Lock inputs
+                document.getElementById("timers-bar").classList.add("status-active");
+                
+                if (soundEnabled) { let warmUp = new SpeechSynthesisUtterance(""); window.speechSynthesis.speak(warmUp); }
                 if(totalTimeElapsed === 0) {
-                    document.body.style.backgroundColor = "#000000"; 
+                    document.body.style.backgroundColor = "#000000";
                     lastLapBigDisplay.innerText = "GO!";
                     lastLapBigDisplay.classList.add("pulsing-text");
-                    sessionData = []; 
+                    sessionData = [];
                 }
             } else {
-                // LAP LOGIC
                 handleLap();
             }
         }
 
         function handleLap() {
             lastLapBigDisplay.classList.remove("pulsing-text");
-            
             let finalLapTimeMs = lapTimeElapsed;
-            let finalLapStr = formatFullTime(finalLapTimeMs); 
-            let skinStr = skinDisplay.innerText; 
-
-            let targetVal = parseFloat(targetInput.value);
+            let finalLapStr = formatFullTime(finalLapTimeMs);
+            let skinStr = skinDisplay.innerText;
             let skinValNum = parseFloat(skinStr);
 
-            lastLapBigDisplay.innerText = skinStr;
-            
-            // --- VOICE ANNOUNCEMENT (UPDATED) ---
-            if (soundEnabled) {
-                speakText(skinStr);
+            // DETERMINE TARGET
+            let currentTarget = 0;
+            if (!isScheduleMode) {
+                currentTarget = parseFloat(targetInput.value);
+            } else {
+                // Use current index, fallback to last item if we run out
+                let indexToUse = currentLapIndex < scheduleTargets.length ? currentLapIndex : scheduleTargets.length - 1;
+                currentTarget = scheduleTargets[indexToUse];
             }
 
-            let isGood = skinValNum <= targetVal;
+            lastLapBigDisplay.innerText = skinStr;
+            if (soundEnabled) speakText(skinStr);
 
-            let lapNum = sessionData.length + 1;
-            sessionData.push({
-                num: lapNum,
-                time: finalLapStr, 
-                skin: skinStr,
-                status: isGood ? "✅" : "❌"
-            });
-
+            let isGood = skinValNum <= currentTarget;
+            
+            // Visual Flash
             if (flashTimeout) clearTimeout(flashTimeout);
             document.body.style.backgroundColor = isGood ? "#00aa55" : "#dd2222";
-            flashTimeout = setTimeout(() => {
-                 document.body.style.backgroundColor = "#000000";
-            }, 4000);
+            flashTimeout = setTimeout(() => { document.body.style.backgroundColor = "#000000"; }, 4000);
 
+            // Record Data
+            let lapNum = sessionData.length + 1;
+            sessionData.push({ num: lapNum, time: finalLapStr, skin: skinStr, target: currentTarget, status: isGood ? "✅" : "❌" });
+
+            // Add to list
             let row = document.createElement("div");
             row.className = "lap-row " + (isGood ? "lap-good" : "lap-bad");
-            row.innerHTML = "<span>#" + lapNum + "</span> <span>" + finalLapStr + "</span>";
+            row.innerHTML = `<span>#${lapNum} <small class="target-tag">[Target: ${currentTarget}]</small></span> <span>${finalLapStr}</span>`;
             lapsList.prepend(row);
 
+            // Reset Lap
             lapTimeElapsed = 0;
             lapDisplay.innerText = "00:00.00";
             skinDisplay.innerText = "0.0";
-        }
 
-        function speakText(text) {
-            // Cancel any pending speech
-            window.speechSynthesis.cancel();
-            
-            // Convert "5.6" -> "5 6" to force distinct digit reading without "point"
-            let spokenText = text.replace(".", " ");
-
-            let msg = new SpeechSynthesisUtterance(spokenText);
-            
-            // PUNCHY SETTINGS
-            msg.rate = 1.8;  // Fast!
-            msg.pitch = 1.1; // Slightly sharper
-            msg.volume = 1.0; 
-            msg.lang = 'en-US'; // US English is usually punchier
-
-            window.speechSynthesis.speak(msg);
-        }
-
-        function toggleSound() {
-            soundEnabled = !soundEnabled;
-            if(soundEnabled) {
-                btnSound.innerHTML = "🔊";
-                btnSound.className = "small-btn sound-on";
-                speakText("Voice On");
-            } else {
-                btnSound.innerHTML = "🔇";
-                btnSound.className = "small-btn sound-off";
-                window.speechSynthesis.cancel();
+            // Advance Schedule
+            if (isScheduleMode) {
+                currentLapIndex++;
+                updateNextLapDisplay();
             }
+        }
+
+        function parseSchedule() {
+            let raw = scheduleInput.value;
+            // Split by comma, newline, or space
+            let parts = raw.split(/[\n, ]+/).filter(p => p.trim() !== "");
+            scheduleTargets = parts.map(p => parseFloat(p));
+            if (scheduleTargets.length === 0) scheduleTargets = [15.0]; // Fallback
+        }
+
+        function updateNextLapDisplay() {
+            let nextIndex = currentLapIndex; 
+            // If we are currently running Lap 1 (index 0), the target is index 0.
+            // If we just finished Lap 1, currentLapIndex becomes 1.
+            let displayIndex = nextIndex < scheduleTargets.length ? nextIndex : scheduleTargets.length - 1;
+            let val = scheduleTargets[displayIndex];
+            nextLapDisplay.innerText = "Current Lap Target: " + val + "s";
         }
 
         function stopTimer() {
             if (running) {
-                if (lapTimeElapsed > 100) {
-                    handleLap();
-                }
+                if (lapTimeElapsed > 100) handleLap();
                 running = false;
                 clearInterval(timerInterval);
                 lapBtn.innerText = "RESUME";
                 lapBtn.style.backgroundColor = "#00aa55";
-                targetInput.disabled = false;
-                timersBar.classList.remove("status-active");
+                document.querySelectorAll('input, textarea').forEach(el => el.disabled = false);
+                document.getElementById("timers-bar").classList.remove("status-active");
                 lastLapBigDisplay.classList.remove("pulsing-text");
+                
+                if(isScheduleMode) {
+                    scheduleInput.style.display = "block";
+                    nextLapDisplay.style.display = "none";
+                }
             }
         }
 
@@ -479,95 +318,72 @@
             stopTimer();
             if (flashTimeout) clearTimeout(flashTimeout);
             document.body.style.backgroundColor = "#000000";
-            
-            totalTimeElapsed = 0;
-            lapTimeElapsed = 0;
-            totalDisplay.innerText = "00:00.00";
-            lapDisplay.innerText = "00:00.00";
-            skinDisplay.innerText = "0.0";
-            lastLapBigDisplay.innerText = "READY";
-            lastLapBigDisplay.classList.add("pulsing-text");
-            lapsList.innerHTML = "";
-            lapBtn.innerText = "START";
-            lapBtn.style.backgroundColor = "#0044cc";
-            targetInput.disabled = false;
-            sessionData = [];
+            totalTimeElapsed = 0; lapTimeElapsed = 0;
+            totalDisplay.innerText = "00:00.00"; lapDisplay.innerText = "00:00.00"; skinDisplay.innerText = "0.0";
+            lastLapBigDisplay.innerText = "READY"; lastLapBigDisplay.classList.add("pulsing-text");
+            lapsList.innerHTML = ""; lapBtn.innerText = "START"; lapBtn.style.backgroundColor = "#0044cc";
+            sessionData = []; currentLapIndex = 0;
+            document.querySelectorAll('input, textarea').forEach(el => el.disabled = false);
         }
 
-        // --- GENERATORS ---
-        function buildWhatsAppText() {
-            if (sessionData.length === 0) return "No data";
-            
-            let msg = "*⏱️ PACER SESSION*\n";
-            msg += "Target: " + targetInput.value + "s\n\n";
-            
-            for (let i = 0; i < sessionData.length; i++) {
-                let lap = sessionData[i];
-                let cleanTime = lap.time;
-                if(cleanTime.indexOf("00:") === 0) {
-                    cleanTime = cleanTime.substring(3);
-                }
-                msg += "Lap " + lap.num + " -> " + cleanTime + " " + lap.status + "\n";
-            }
-            
-            msg += "\nTotal Time: " + totalDisplay.innerText;
-            msg += "\n🚀 Built by Michael@makemefaster.com";
-            return msg;
+        // --- UTILS ---
+        function formatFullTime(ms) {
+            let date = new Date(ms);
+            return date.getUTCMinutes().toString().padStart(2,'0') + ":" + 
+                   date.getUTCSeconds().toString().padStart(2,'0') + "." + 
+                   Math.floor(date.getUTCMilliseconds()/10).toString().padStart(2,'0');
+        }
+        
+        function speakText(text) {
+            window.speechSynthesis.cancel();
+            let msg = new SpeechSynthesisUtterance(text.replace(".", " "));
+            msg.rate = 1.8; msg.pitch = 1.1; msg.lang = 'en-US';
+            window.speechSynthesis.speak(msg);
+        }
+        
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            let btn = document.getElementById("btn-sound");
+            if(soundEnabled) { btn.innerHTML = "🔊"; btn.className = "small-btn sound-on"; speakText("Voice On"); }
+            else { btn.innerHTML = "🔇"; btn.className = "small-btn sound-off"; window.speechSynthesis.cancel(); }
         }
 
-        function shareToWhatsapp() {
-            if (sessionData.length === 0) { alert("No laps to share!"); return; }
-            let encodedMsg = encodeURIComponent(buildWhatsAppText());
-            window.open("https://wa.me/?text=" + encodedMsg, "_blank");
-        }
-
-        function showQR() {
-            if (sessionData.length === 0) { alert("No laps to share!"); return; }
-            
-            let rawText = buildWhatsAppText();
-            let encodedText = encodeURIComponent(rawText);
-            let waLink = "https://wa.me/?text=" + encodedText;
-
-            var qr = new QRious({
-              element: document.getElementById('qr-code'),
-              value: waLink,
-              size: 500,  
-              level: 'L' 
+        // --- SHARE & EXPORT ---
+        function buildCSV() {
+            if (sessionData.length === 0) return "No Data";
+            let csv = "Lap,Target,Time,Status\n";
+            sessionData.forEach(lap => {
+                csv += `${lap.num},${lap.target},${lap.time},${lap.status}\n`;
             });
-
-            qrModal.style.display = "flex";
+            return csv;
         }
 
         function copyToClipboard() {
-            let text = buildWhatsAppText(); 
+            let text = buildCSV();
             if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(() => {
-                    alert("✅ Copied Full Report to Clipboard!");
-                }).catch(err => { manualCopy(text); });
-            } else {
-                manualCopy(text);
-            }
+                navigator.clipboard.writeText(text).then(() => alert("✅ Copied CSV Data! Paste into Google Sheets.")).catch(err => manualCopy(text));
+            } else { manualCopy(text); }
         }
         
         function manualCopy(text) {
-             const textArea = document.createElement("textarea");
-             textArea.value = text;
-             textArea.style.position = "fixed"; 
-             textArea.style.left = "-9999px";
-             document.body.appendChild(textArea);
-             textArea.focus();
-             textArea.select();
-             try {
-                 document.execCommand('copy');
-                 alert("✅ Copied Full Report to Clipboard!");
-             } catch (err) {
-                 alert("Use the Share button instead.");
-             }
-             document.body.removeChild(textArea);
+            const ta = document.createElement("textarea");
+            ta.value = text; ta.style.position = "fixed"; ta.style.left = "-9999px";
+            document.body.appendChild(ta); ta.focus(); ta.select();
+            try { document.execCommand('copy'); alert("✅ Copied CSV Data!"); } catch (e) { alert("Failed to copy"); }
+            document.body.removeChild(ta);
         }
 
-        function closeQR() {
-            qrModal.style.display = "none";
+        function shareToWhatsapp() {
+            if (sessionData.length === 0) { alert("No data!"); return; }
+            let msg = "*PACER REPORT*\n";
+            sessionData.forEach(l => msg += `L${l.num} (${l.target}): ${l.time} ${l.status}\n`);
+            window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
+        }
+
+        function showQR() {
+            if (sessionData.length === 0) { alert("No data!"); return; }
+            var qr = new QRious({ element: document.getElementById('qr-code'), value: "https://wa.me/?text=" + encodeURIComponent(buildCSV()), size: 500 });
+            document.getElementById("qr-modal").style.display = "flex";
         }
     </script>
 </body>
