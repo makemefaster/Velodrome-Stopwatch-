@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pro Pacer V5</title>
+    <title>Pro Pacer V6</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -43,17 +43,39 @@
         #target-input { -webkit-user-select: text; user-select: text; background: #222; border: 1px solid #555; color: #00ffcc; font-size: 1.8rem; width: 100px; text-align: center; border-radius: 8px; font-family: monospace; }
         
         /* Schedule Input */
-        #schedule-ui { display: none; width: 100%; } /* Hidden by default until toggled */
+        #schedule-ui { display: none; width: 100%; }
         #schedule-input { -webkit-user-select: text; user-select: text; width: 100%; height: 80px; background: #222; border: 1px solid #555; color: #fff; font-size: 0.9rem; font-family: monospace; border-radius: 5px; padding: 5px; }
         
         .next-target-display { font-size: 0.8rem; color: #aaa; margin-top: 5px; text-align: center; display: none;}
 
         /* --- LAP LIST --- */
         #laps-container { height: 15vh; width: 94%; overflow-y: auto; -webkit-overflow-scrolling: touch; text-align: center; font-size: 1rem; border-top: 1px solid #555; margin-bottom: 5px; background: rgba(0,0,0,0.3); z-index: 20; border-radius: 8px; }
-        .lap-row { padding: 8px 12px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; }
+        
+        /* UPDATED LAP ROW CSS TO FIX BLANK SPACES */
+        .lap-row { 
+            padding: 8px 12px; 
+            border-bottom: 1px solid #333; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .lap-left {
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .lap-right {
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 1.1rem;
+            flex-shrink: 0; /* Prevents time from being squashed */
+            margin-left: 10px;
+        }
+
         .lap-good { color: #ffffff; font-weight: bold; }
         .lap-bad { color: #000000; font-weight: bold; }
-        .target-tag { color: #888; font-size: 0.8rem; margin-left: 5px; }
+        .target-tag { color: #888; font-size: 0.8rem; margin-left: 5px; font-weight: normal;}
 
         /* --- CONTROLS --- */
         .controls { display: flex; width: 100%; height: 20vh; padding-bottom: max(10px, env(safe-area-inset-bottom)); z-index: 1000; }
@@ -124,7 +146,7 @@
     </div>
 
     <div id="laps-container"><div id="laps-list"></div></div>
-    <div class="footer-credit">Built by Michael@makemefaster.com</div>
+    <div class="footer-credit">Recorded by www.MakeMeFaster.com</div>
 
     <div class="controls">
         <button id="btn-stop">
@@ -157,7 +179,6 @@
         const lapsList = document.getElementById("laps-list");
         const targetInput = document.getElementById("target-input");
         
-        // Mode Elements
         const btnStatic = document.getElementById("mode-static");
         const btnSchedule = document.getElementById("mode-schedule");
         const staticUI = document.getElementById("static-ui");
@@ -167,7 +188,6 @@
 
         // --- BUTTON LISTENERS ---
         lapBtn.addEventListener('click', () => {
-            // Special check: If in Finish Mode (1 to go), this button acts as STOP
             if(running && isScheduleMode && getRemainingLaps() === 1) {
                 stopTimer();
             } else {
@@ -205,7 +225,6 @@
         document.addEventListener('keydown', function(event) {
             if(["PageDown", "PageUp", "ArrowRight", "ArrowLeft", " "].indexOf(event.code) > -1) event.preventDefault();
             
-            // Big Button Trigger
             if (event.key === "PageDown" || event.key === "ArrowRight" || event.key === " ") {
                  if(running && isScheduleMode && getRemainingLaps() === 1) {
                     stopTimer();
@@ -214,7 +233,6 @@
                  }
             }
 
-            // Small Button Trigger
             if (event.key === "PageUp" || event.key === "ArrowLeft") {
                 stopTimer();
             }
@@ -296,9 +314,14 @@
             let lapNum = sessionData.length + 1;
             sessionData.push({ num: lapNum, time: finalLapStr, skin: skinStr, target: currentTarget, status: isGood ? "✅" : "❌" });
 
+            // HTML CONSTRUCTION FOR LAP ROW
             let row = document.createElement("div");
             row.className = "lap-row " + (isGood ? "lap-good" : "lap-bad");
-            row.innerHTML = `<span>#${lapNum} <small class="target-tag">[Target: ${currentTarget}]</small></span> <span>${removeLeadingZeros(finalLapStr)}</span>`;
+            let cleanTime = removeLeadingZeros(finalLapStr);
+            row.innerHTML = `
+                <div class="lap-left">#${lapNum} <small class="target-tag">[Target: ${currentTarget}]</small></div>
+                <div class="lap-right">${cleanTime}</div>
+            `;
             lapsList.prepend(row);
 
             // Reset Lap
@@ -338,13 +361,12 @@
                 let remaining = getRemainingLaps();
                 stopCountdown.innerText = remaining;
                 
-                // CRITICAL: Logic to switch Button 1 to "STOP"
                 if (remaining === 1) {
                     lapBtn.innerText = "FINISH";
-                    lapBtn.style.backgroundColor = "#cc0000"; // Turn Red
+                    lapBtn.style.backgroundColor = "#cc0000";
                 } else {
                     lapBtn.innerText = "LAP";
-                    lapBtn.style.backgroundColor = "#0044cc"; // Back to Blue
+                    lapBtn.style.backgroundColor = "#0044cc";
                 }
             } else {
                 stopCountdown.innerText = "";
@@ -353,9 +375,7 @@
 
         function stopTimer() {
             if (running) {
-                // Record the final lap if it was a running timer
                 if (lapTimeElapsed > 100) handleLap();
-                
                 running = false;
                 clearInterval(timerInterval);
                 document.body.style.backgroundColor = "#000000";
@@ -395,8 +415,7 @@
         }
 
         function removeLeadingZeros(timeStr) {
-            // Converts "00:05.2" -> "5.2" or "01:20.5" -> "1:20.5"
-            // Simple regex: Remove leading zeros and colon if total is < 1 min
+            if(!timeStr) return "0.0";
             if(timeStr.startsWith("00:")) {
                 let s = timeStr.substring(3);
                 if(s.startsWith("0")) return s.substring(1);
@@ -430,7 +449,6 @@
             
             let txt = `PACER SESSION REPORT\n`;
             txt += `Date: ${dateStr}\n`;
-            txt += `Barometric Pressure: ______ hPa\n`; // Placeholder
             txt += `--------------------------\n`;
             
             sessionData.forEach(lap => {
@@ -440,7 +458,7 @@
             
             txt += `--------------------------\n`;
             txt += `Total: ${totalDisplay.innerText}\n`;
-            txt += `stopwatch by makemefaster.com`;
+            txt += `Recorded by www.MakeMeFaster.com`;
             return txt;
         }
 
