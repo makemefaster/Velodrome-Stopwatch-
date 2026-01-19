@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pro Pacer V7 Zones</title>
+    <title>Pro Pacer V8</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -25,7 +25,7 @@
         #skin-val { color: #00ffcc; }
 
         /* --- BIG DISPLAY --- */
-        #last-lap-big { flex-grow: 1; display: flex; align-items: center; justify-content: center; font-size: 20vh; font-weight: bold; letter-spacing: -0.05em; text-shadow: 4px 4px 0px #000; width: 100%; text-align: center; z-index: 10; padding: 0 10px; word-break: break-word;}
+        #last-lap-big { flex-grow: 1; display: flex; align-items: center; justify-content: center; font-size: 18vh; font-weight: bold; letter-spacing: -0.05em; text-shadow: 4px 4px 0px #000; width: 100%; text-align: center; z-index: 10; padding: 0 10px; word-break: break-word;}
         .pulsing-text { animation: pulse 1s infinite; font-size: 12vh !important; letter-spacing: 0 !important; color: #00ffcc; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
@@ -54,6 +54,7 @@
         .lap-left { display: flex; align-items: center; overflow: hidden; white-space: nowrap; }
         .lap-right { font-family: monospace; font-weight: bold; font-size: 1.1rem; flex-shrink: 0; margin-left: 10px; }
         .lap-good { color: #ffffff; font-weight: bold; }
+        .lap-neutral { color: #aaaaff; font-weight: bold; } /* For Commands */
         .target-tag { color: #888; font-size: 0.8rem; margin-left: 5px; font-weight: normal;}
 
         /* --- CONTROLS --- */
@@ -116,8 +117,8 @@
 
         <div id="ui-commands" class="input-section hidden">
              <div style="width:100%">
-                <textarea id="command-input" placeholder="2.0, GO&#10;2.4, PUSH&#10;3.0, ON&#10;3.4, STEADY"></textarea>
-                <div class="info-display">Format: TimeLimit, Word</div>
+                <textarea id="command-input" placeholder="0 Ease Back&#10;14 Relax&#10;14.8 ON&#10;15.4 Press&#10;16 Oh dear"></textarea>
+                <div class="info-display">Format: Limit Word (e.g. 14.0 Relax)</div>
             </div>
         </div>
     </div>
@@ -175,12 +176,10 @@
         const commandInput = document.getElementById("command-input");
 
         // --- INIT ---
-        // Ensure Static is visible on load
         switchMode('static');
 
         // --- EVENT LISTENERS ---
         lapBtn.addEventListener('click', () => {
-            // "Finish" Logic only for Schedule Mode
             if(running && currentMode === 'schedule' && getRemainingLaps() === 1) {
                 stopTimer();
             } else {
@@ -195,7 +194,6 @@
         document.getElementById("btn-copy").addEventListener('click', copyToClipboard);
         document.getElementById("btn-sound").addEventListener('click', toggleSound);
 
-        // Mode Switching
         btnStatic.addEventListener('click', () => switchMode('static'));
         btnSchedule.addEventListener('click', () => switchMode('schedule'));
         btnCommands.addEventListener('click', () => switchMode('commands'));
@@ -306,18 +304,18 @@
             let displayTxt = skinStr;
             let speakTxt = skinStr;
             let targetLabel = "";
-            let isGood = true; // Default good for static/commands
+            let modeColor = "neutral"; 
 
             // LOGIC PER MODE
             if (currentMode === 'static') {
                 let currentTarget = parseFloat(targetInput.value);
-                isGood = skinValNum <= currentTarget;
+                if (skinValNum <= currentTarget) modeColor = "good"; else modeColor = "bad";
                 targetLabel = currentTarget;
                 
             } else if (currentMode === 'schedule') {
                 let indexToUse = currentLapIndex < scheduleTargets.length ? currentLapIndex : scheduleTargets.length - 1;
                 let currentTarget = scheduleTargets[indexToUse];
-                isGood = skinValNum <= currentTarget;
+                if (skinValNum <= currentTarget) modeColor = "good"; else modeColor = "bad";
                 targetLabel = currentTarget;
                 
                 currentLapIndex++;
@@ -326,7 +324,7 @@
 
             } else if (currentMode === 'commands') {
                 // Find correct command
-                let matched = "CALM"; // Default fallback
+                let matched = "NO ZONE"; 
                 for(let i=0; i<commandZones.length; i++) {
                     if (skinValNum <= commandZones[i].limit) {
                         matched = commandZones[i].word;
@@ -336,35 +334,43 @@
                 displayTxt = matched; // SHOW WORD
                 speakTxt = matched;   // SPEAK WORD
                 targetLabel = "Zone";
-                isGood = true; // Zones usually don't have "fail" states, just feedback
+                modeColor = "neutral"; // Zones are not pass/fail, they are Blue/Neutral
             }
 
-            // UPDATE UI
+            // UPDATE UI & COLORS
             lastLapBigDisplay.innerText = displayTxt;
             if (soundEnabled) speakText(speakTxt);
 
-            if(currentMode !== 'commands') {
-                document.body.style.backgroundColor = isGood ? "#00aa55" : "#dd2222";
+            if(modeColor === "good") {
+                document.body.style.backgroundColor = "#00aa55"; // Green
+            } else if (modeColor === "bad") {
+                document.body.style.backgroundColor = "#dd2222"; // Red
             } else {
-                document.body.style.backgroundColor = "#0044cc"; // Blue flash for commands
+                // Command Mode Flash
+                document.body.style.backgroundColor = "#0044cc"; // Blue
                 setTimeout(() => document.body.style.backgroundColor = "#000000", 500);
             }
 
             // RECORD DATA
             let lapNum = sessionData.length + 1;
-            // For export we use the TIME, but we can store the command in status or target
-            let statusStr = (currentMode === 'commands') ? displayTxt : (isGood ? "✅" : "❌");
+            let statusStr = "";
+            if (currentMode === 'commands') statusStr = displayTxt;
+            else statusStr = (modeColor === "good" ? "✅" : "❌");
             
             sessionData.push({ num: lapNum, time: finalLapStr, target: targetLabel, status: statusStr });
 
+            // ROW HTML
             let row = document.createElement("div");
-            row.className = "lap-row " + (isGood ? "lap-good" : "lap-bad");
+            let rowClass = "lap-bad";
+            if(modeColor === "good") rowClass = "lap-good";
+            if(modeColor === "neutral") rowClass = "lap-neutral";
+
+            row.className = "lap-row " + rowClass;
             let cleanTime = removeLeadingZeros(finalLapStr);
             
-            // Build Row HTML
             let leftContent = `#${lapNum}`;
-            if(currentMode !== 'commands') leftContent += ` <small class="target-tag">[${targetLabel}]</small>`;
-            else leftContent += ` <small class="target-tag">[${displayTxt}]</small>`;
+            if(currentMode === 'commands') leftContent += ` <small class="target-tag">[${displayTxt}]</small>`;
+            else leftContent += ` <small class="target-tag">[${targetLabel}]</small>`;
 
             row.innerHTML = `
                 <div class="lap-left">${leftContent}</div>
@@ -388,16 +394,21 @@
         }
 
         function parseCommands() {
-            // Format: "2.0, GO" per line
+            // Format: "2.0 Relax" or "2.0, Relax"
             let raw = commandInput.value;
             let lines = raw.split("\n");
             commandZones = [];
             
             lines.forEach(line => {
-                let parts = line.split(",");
+                // Regex to split on first space OR comma
+                let parts = line.split(/[ ,]+/);
+                
+                // We need at least 2 parts (Limit + Word)
                 if(parts.length >= 2) {
-                    let t = parseFloat(parts[0].trim());
-                    let w = parts[1].trim();
+                    let t = parseFloat(parts[0]);
+                    // Combine rest of parts as the Word (e.g. "Oh dear")
+                    let w = parts.slice(1).join(" ");
+                    
                     if(!isNaN(t)) {
                         commandZones.push({limit: t, word: w});
                     }
@@ -406,7 +417,6 @@
             // Sort by time limit ascending
             commandZones.sort((a, b) => a.limit - b.limit);
             
-            // Fallback if empty
             if(commandZones.length === 0) {
                 commandZones.push({limit: 999, word: "NO DATA"});
             }
@@ -500,13 +510,13 @@
         
         function speakText(text) {
             window.speechSynthesis.cancel();
-            // If it's a number (static/schedule), space it out. If command, speak as is.
             let spoken = text;
-            if(!isNaN(parseFloat(text))) {
+            // Only split digits if it looks like a number
+            if(!isNaN(parseFloat(text)) && text.includes(".")) {
                 spoken = text.replace(".", " ");
             }
             let msg = new SpeechSynthesisUtterance(spoken);
-            msg.rate = 1.4; 
+            msg.rate = 1.0;  // NORMAL SPEED
             msg.pitch = 1.0; 
             msg.lang = 'en-US';
             window.speechSynthesis.speak(msg);
@@ -531,7 +541,6 @@
             
             sessionData.forEach(lap => {
                 let cleanTime = removeLeadingZeros(lap.time);
-                // For commands, status contains the word, so we show it nicely
                 let extra = (currentMode === 'commands') ? `(${lap.status})` : `${lap.status}`;
                 txt += `Lap ${lap.num}: ${cleanTime} ${extra}\n`;
             });
