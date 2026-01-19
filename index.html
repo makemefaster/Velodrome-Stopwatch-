@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pro Pacer V8</title>
+    <title>Pro Pacer V10</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -25,7 +25,8 @@
         #skin-val { color: #00ffcc; }
 
         /* --- BIG DISPLAY --- */
-        #last-lap-big { flex-grow: 1; display: flex; align-items: center; justify-content: center; font-size: 18vh; font-weight: bold; letter-spacing: -0.05em; text-shadow: 4px 4px 0px #000; width: 100%; text-align: center; z-index: 10; padding: 0 10px; word-break: break-word;}
+        /* Increased font size slightly since we removed the dot */
+        #last-lap-big { flex-grow: 1; display: flex; align-items: center; justify-content: center; font-size: 22vh; font-weight: bold; letter-spacing: -0.05em; text-shadow: 4px 4px 0px #000; width: 100%; text-align: center; z-index: 10; padding: 0 10px; word-break: break-word;}
         .pulsing-text { animation: pulse 1s infinite; font-size: 12vh !important; letter-spacing: 0 !important; color: #00ffcc; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
@@ -54,7 +55,7 @@
         .lap-left { display: flex; align-items: center; overflow: hidden; white-space: nowrap; }
         .lap-right { font-family: monospace; font-weight: bold; font-size: 1.1rem; flex-shrink: 0; margin-left: 10px; }
         .lap-good { color: #ffffff; font-weight: bold; }
-        .lap-neutral { color: #aaaaff; font-weight: bold; } /* For Commands */
+        .lap-neutral { color: #aaaaff; font-weight: bold; } 
         .target-tag { color: #888; font-size: 0.8rem; margin-left: 5px; font-weight: normal;}
 
         /* --- CONTROLS --- */
@@ -117,7 +118,7 @@
 
         <div id="ui-commands" class="input-section hidden">
              <div style="width:100%">
-                <textarea id="command-input" placeholder="0 Ease Back&#10;14 Relax&#10;14.8 ON&#10;15.4 Press&#10;16 Oh dear"></textarea>
+                <textarea id="command-input" placeholder="14 Relax&#10;14.8 ON&#10;15.4 Press&#10;16 Oh dear"></textarea>
                 <div class="info-display">Format: Limit Word (e.g. 14.0 Relax)</div>
             </div>
         </div>
@@ -141,13 +142,12 @@
         let totalTimeElapsed = 0; let lapTimeElapsed = 0; let lastTick = 0;
         let soundEnabled = false; 
         
-        // MODES: 'static', 'schedule', 'commands'
         let currentMode = 'static'; 
 
         // DATA HOLDERS
         let scheduleTargets = []; 
         let currentLapIndex = 0; 
-        let commandZones = []; // [{limit: 2.0, word: "GO"}, ...]
+        let commandZones = []; 
 
         // --- DOM ELEMENTS ---
         const totalDisplay = document.getElementById("total-val");
@@ -159,17 +159,14 @@
         const stopCountdown = document.getElementById("stop-countdown");
         const lapsList = document.getElementById("laps-list");
         
-        // Mode Buttons
         const btnStatic = document.getElementById("mode-static");
         const btnSchedule = document.getElementById("mode-schedule");
         const btnCommands = document.getElementById("mode-commands");
         
-        // Input Containers
         const uiStatic = document.getElementById("ui-static");
         const uiSchedule = document.getElementById("ui-schedule");
         const uiCommands = document.getElementById("ui-commands");
         
-        // Inputs
         const targetInput = document.getElementById("target-input");
         const scheduleInput = document.getElementById("schedule-input");
         const scheduleInfo = document.getElementById("schedule-info");
@@ -198,7 +195,6 @@
         btnSchedule.addEventListener('click', () => switchMode('schedule'));
         btnCommands.addEventListener('click', () => switchMode('commands'));
 
-        // Keyboard
         document.addEventListener('keydown', function(event) {
             if(["PageDown", "PageUp", "ArrowRight", "ArrowLeft", " "].indexOf(event.code) > -1) event.preventDefault();
             
@@ -216,12 +212,9 @@
 
         function switchMode(mode) {
             currentMode = mode;
-            
-            // Visuals
             btnStatic.classList.remove("mode-active");
             btnSchedule.classList.remove("mode-active");
             btnCommands.classList.remove("mode-active");
-            
             uiStatic.classList.add("hidden");
             uiSchedule.classList.add("hidden");
             uiCommands.classList.add("hidden");
@@ -250,15 +243,14 @@
             let totalSeconds = Math.floor(lapTimeElapsed / 1000);
             let secondsDigit = totalSeconds % 10;
             let tenthsDigit = Math.floor((lapTimeElapsed % 1000) / 100);
-            skinDisplay.innerText = secondsDigit + "." + tenthsDigit;
+            // UPDATED SKIN LOGIC: No Dot
+            skinDisplay.innerText = secondsDigit + "" + tenthsDigit;
         }
 
         function lapOrStart() {
             if (!running) {
-                // START
                 running = true;
                 
-                // DATA PREP
                 if (currentMode === 'schedule') {
                     parseSchedule();
                     currentLapIndex = 0;
@@ -297,10 +289,10 @@
         function handleLap() {
             lastLapBigDisplay.classList.remove("pulsing-text");
             let finalLapTimeMs = lapTimeElapsed;
+            let finalLapSeconds = finalLapTimeMs / 1000.0;
             let finalLapStr = formatFullTime(finalLapTimeMs);
             let skinStr = skinDisplay.innerText;
-            let skinValNum = parseFloat(skinStr);
-
+            
             let displayTxt = skinStr;
             let speakTxt = skinStr;
             let targetLabel = "";
@@ -309,13 +301,14 @@
             // LOGIC PER MODE
             if (currentMode === 'static') {
                 let currentTarget = parseFloat(targetInput.value);
-                if (skinValNum <= currentTarget) modeColor = "good"; else modeColor = "bad";
+                if (finalLapSeconds <= currentTarget) modeColor = "good"; else modeColor = "bad";
                 targetLabel = currentTarget;
                 
             } else if (currentMode === 'schedule') {
                 let indexToUse = currentLapIndex < scheduleTargets.length ? currentLapIndex : scheduleTargets.length - 1;
                 let currentTarget = scheduleTargets[indexToUse];
-                if (skinValNum <= currentTarget) modeColor = "good"; else modeColor = "bad";
+                
+                if (finalLapSeconds <= currentTarget) modeColor = "good"; else modeColor = "bad";
                 targetLabel = currentTarget;
                 
                 currentLapIndex++;
@@ -323,35 +316,31 @@
                 updateStopButtonCount();
 
             } else if (currentMode === 'commands') {
-                // Find correct command
                 let matched = "NO ZONE"; 
                 for(let i=0; i<commandZones.length; i++) {
-                    if (skinValNum <= commandZones[i].limit) {
+                    if (finalLapSeconds <= commandZones[i].limit) {
                         matched = commandZones[i].word;
                         break;
                     }
                 }
-                displayTxt = matched; // SHOW WORD
-                speakTxt = matched;   // SPEAK WORD
+                displayTxt = matched; 
+                speakTxt = matched;   
                 targetLabel = "Zone";
-                modeColor = "neutral"; // Zones are not pass/fail, they are Blue/Neutral
+                modeColor = "neutral"; 
             }
 
-            // UPDATE UI & COLORS
             lastLapBigDisplay.innerText = displayTxt;
             if (soundEnabled) speakText(speakTxt);
 
             if(modeColor === "good") {
-                document.body.style.backgroundColor = "#00aa55"; // Green
+                document.body.style.backgroundColor = "#00aa55"; 
             } else if (modeColor === "bad") {
-                document.body.style.backgroundColor = "#dd2222"; // Red
+                document.body.style.backgroundColor = "#dd2222"; 
             } else {
-                // Command Mode Flash
-                document.body.style.backgroundColor = "#0044cc"; // Blue
+                document.body.style.backgroundColor = "#0044cc"; 
                 setTimeout(() => document.body.style.backgroundColor = "#000000", 500);
             }
 
-            // RECORD DATA
             let lapNum = sessionData.length + 1;
             let statusStr = "";
             if (currentMode === 'commands') statusStr = displayTxt;
@@ -359,7 +348,6 @@
             
             sessionData.push({ num: lapNum, time: finalLapStr, target: targetLabel, status: statusStr });
 
-            // ROW HTML
             let row = document.createElement("div");
             let rowClass = "lap-bad";
             if(modeColor === "good") rowClass = "lap-good";
@@ -378,10 +366,9 @@
             `;
             lapsList.prepend(row);
 
-            // Reset Lap
             lapTimeElapsed = 0;
             lapDisplay.innerText = "00:00.00";
-            skinDisplay.innerText = "0.0";
+            skinDisplay.innerText = "0.0"; // Reset small skin display
         }
 
         // --- PARSERS ---
@@ -394,32 +381,21 @@
         }
 
         function parseCommands() {
-            // Format: "2.0 Relax" or "2.0, Relax"
             let raw = commandInput.value;
             let lines = raw.split("\n");
             commandZones = [];
-            
             lines.forEach(line => {
-                // Regex to split on first space OR comma
                 let parts = line.split(/[ ,]+/);
-                
-                // We need at least 2 parts (Limit + Word)
                 if(parts.length >= 2) {
                     let t = parseFloat(parts[0]);
-                    // Combine rest of parts as the Word (e.g. "Oh dear")
                     let w = parts.slice(1).join(" ");
-                    
                     if(!isNaN(t)) {
                         commandZones.push({limit: t, word: w});
                     }
                 }
             });
-            // Sort by time limit ascending
             commandZones.sort((a, b) => a.limit - b.limit);
-            
-            if(commandZones.length === 0) {
-                commandZones.push({limit: 999, word: "NO DATA"});
-            }
+            if(commandZones.length === 0) commandZones.push({limit: 999, word: "NO DATA"});
         }
 
         // --- HELPERS ---
@@ -467,7 +443,6 @@
                 document.getElementById("timers-bar").classList.remove("status-active");
                 lastLapBigDisplay.classList.remove("pulsing-text");
                 
-                // Show Inputs again
                 if(currentMode === 'schedule') {
                     scheduleInput.classList.remove("hidden");
                     scheduleInfo.classList.add("hidden");
@@ -511,12 +486,18 @@
         function speakText(text) {
             window.speechSynthesis.cancel();
             let spoken = text;
-            // Only split digits if it looks like a number
-            if(!isNaN(parseFloat(text)) && text.includes(".")) {
-                spoken = text.replace(".", " ");
+            
+            // If it's a "skin" number (e.g., "54"), we want to space it "5 4"
+            // so it says "Five Four", not "Fifty Four".
+            // We check if it is numeric AND doesn't have spaces yet.
+            if(!isNaN(text) && text.indexOf(" ") === -1) {
+                spoken = text.split('').join(' ');
             }
+            
+            // If it's a command word (e.g. "Relax"), we speak normally.
+            
             let msg = new SpeechSynthesisUtterance(spoken);
-            msg.rate = 1.0;  // NORMAL SPEED
+            msg.rate = 1.0; 
             msg.pitch = 1.0; 
             msg.lang = 'en-US';
             window.speechSynthesis.speak(msg);
